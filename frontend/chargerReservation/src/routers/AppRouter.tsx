@@ -12,6 +12,7 @@ import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminPenaltyPage from "../pages/admin/AdminPenaltyPage";
 import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
 import AdminLoginPage from "../pages/admin/AdminLoginPage";
+import Stations from "../pages/station/Stations";
 
 export const AppRouter = () => {
   return (
@@ -47,6 +48,8 @@ export const AppRouter = () => {
         <Route path="/admin/notice" element={<AdminNoticePage />} />
         <Route path="/admin/penalty" element={<AdminPenaltyPage />} />
         <Route path="/admin/inquiry" element={<AdminInquiryPage />} />
+        {/* 충전소 조회 페이지 */}
+        <Route path="/stations" element={<Stations />} />
       </Routes>
     </BrowserRouter>
   );
