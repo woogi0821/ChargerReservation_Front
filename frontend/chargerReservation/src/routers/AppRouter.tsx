@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ChargerMain } from "../pages/mock/KioskPage";
-import AdminPage from "../pages/admin/AdminDashboardPage";
 import AdminMemberPage from "../pages/admin/AdminMemberPage";
 import AdminChargerPage from "../pages/admin/AdminChargerPage";
 import AdminReservationPage from "../pages/admin/AdminReservationPage";
@@ -11,6 +10,7 @@ import Home from "../components/common/Home";
 import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminPenaltyPage from "../pages/admin/AdminPenaltyPage";
 import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
+
 import AdminLoginPage from "../pages/admin/AdminLoginPage";
 import Stations from "../pages/station/Stations";
 
@@ -35,9 +35,6 @@ export const AppRouter = () => {
                     2. 독립 영역 (키오스크 및 테스트/관리자)
                    ========================================== */}
         <Route path="kiosk" element={<ChargerMain />} />
-
-        {/* 관리자 로그인 */}
-        <Route path="/admin/login" element={<AdminLoginPage />} />
 
 
         {/* 관리자 페이지들 (팀장님 기존 코드 유지) */}

@@ -1,15 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 
+// ─────────────────────────────────────────────
+// 타입 정의
+// ─────────────────────────────────────────────
+
 interface Reservation {
-  id: string;
-  userName: string;
-  stationName: string;
-  chargerType: string;
-  date: string;
-  time: string;
-  status: "upcoming" | "ongoing" | "done" | "cancel" | "noshow";
+  reservationId: number;
+  memberId: number;
+  chargerId: string;
+  carNumber: string;
+  startTime: string;
+  endTime: string;
+  actualEndTime: string | null;
+  status: "RESERVED" | "CHARGING" | "COMPLETED" | "CANCELED" | "NOSHOW";
 }
 
 interface FilterTab {
@@ -17,67 +22,127 @@ interface FilterTab {
   label: string;
 }
 
-const INITIAL_RESERVATIONS: Reservation[] = [
-  { id: "r001", userName: "김민준", stationName: "강남 테헤란로점",     chargerType: "급속 50kW",  date: "2026.03.30", time: "14:00", status: "upcoming" },
-  { id: "r002", userName: "이서연", stationName: "송파 잠실점",         chargerType: "급속 100kW", date: "2026.03.30", time: "13:00", status: "ongoing"  },
-  { id: "r003", userName: "박지훈", stationName: "마포 홍대점",         chargerType: "완속 7kW",   date: "2026.03.30", time: "12:00", status: "done"     },
-  { id: "r004", userName: "최수아", stationName: "서초 반포점",         chargerType: "급속 50kW",  date: "2026.03.30", time: "11:00", status: "cancel"   },
-  { id: "r005", userName: "정우성", stationName: "영등포 타임스퀘어점", chargerType: "급속 100kW", date: "2026.03.29", time: "10:00", status: "done"     },
-  { id: "r006", userName: "한지민", stationName: "강남 테헤란로점",     chargerType: "완속 7kW",   date: "2026.03.29", time: "09:00", status: "done"     },
-  { id: "r007", userName: "오세훈", stationName: "송파 잠실점",         chargerType: "급속 50kW",  date: "2026.03.28", time: "16:00", status: "cancel"   },
-  { id: "r008", userName: "윤아름", stationName: "마포 홍대점",         chargerType: "급속 100kW", date: "2026.03.28", time: "15:00", status: "upcoming" },
-  { id: "r009", userName: "홍길동", stationName: "서초 반포점",         chargerType: "급속 50kW",  date: "2026.03.27", time: "10:00", status: "noshow"   },
-];
+// ─────────────────────────────────────────────
+// 필터 탭 목록
+// ─────────────────────────────────────────────
 
 const FILTER_TABS: FilterTab[] = [
-  { value: "all",      label: "전체"   },
-  { value: "upcoming", label: "예정"   },
-  { value: "ongoing",  label: "진행중" },
-  { value: "done",     label: "완료"   },
-  { value: "cancel",   label: "취소"   },
-  { value: "noshow",   label: "노쇼"   },
+  { value: "all",       label: "전체"   },
+  { value: "RESERVED",  label: "예정"   },
+  { value: "CHARGING",  label: "진행중" },
+  { value: "COMPLETED", label: "완료"   },
+  { value: "CANCELED",  label: "취소"   },
+  { value: "NOSHOW",    label: "노쇼"   },
 ];
 
+// ─────────────────────────────────────────────
+// 상태별 스타일 딕셔너리
+// ─────────────────────────────────────────────
+
 const reservationStatusStyles: {
-  [key in "upcoming" | "ongoing" | "done" | "cancel" | "noshow"]: {
+  [key in "RESERVED" | "CHARGING" | "COMPLETED" | "CANCELED" | "NOSHOW"]: {
     label: string;
     badge: string;
   };
 } = {
-  upcoming: { label: "예정",   badge: "bg-blue-50 text-blue-600"     },
-  ongoing:  { label: "진행중", badge: "bg-green-50 text-green-600"   },
-  done:     { label: "완료",   badge: "bg-gray-100 text-gray-500"    },
-  cancel:   { label: "취소",   badge: "bg-red-50 text-red-500"       },
-  noshow:   { label: "노쇼",   badge: "bg-orange-50 text-orange-600" },
+  RESERVED:  { label: "예정",   badge: "bg-blue-50 text-blue-600"     },
+  CHARGING:  { label: "진행중", badge: "bg-green-50 text-green-600"   },
+  COMPLETED: { label: "완료",   badge: "bg-gray-100 text-gray-500"    },
+  CANCELED:  { label: "취소",   badge: "bg-red-50 text-red-500"       },
+  NOSHOW:    { label: "노쇼",   badge: "bg-orange-50 text-orange-600" },
 };
 
-// 예약 관리 수정 권한 체크
+// ─────────────────────────────────────────────
+// 권한 체크
 // SUPER 또는 RESERVATION 파트만 강제취소 가능
+// ─────────────────────────────────────────────
+
 const canEditReservation = (): boolean => {
   const adminRole = localStorage.getItem("adminRole");
   const adminPart = localStorage.getItem("adminPart");
-  return adminRole === "SUPER" || adminPart === "RESERVATION";
+  return adminRole === "SUPER" || adminPart === "RESERVATION" || adminPart === "ALL";
 };
+
+// ─────────────────────────────────────────────
+// 컴포넌트
+// ─────────────────────────────────────────────
 
 const AdminReservationPage = () => {
 
-  const [reservations, setReservations] = useState<Reservation[]>(INITIAL_RESERVATIONS);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterTab["value"]>("all");
+  const [isLoading, setIsLoading] = useState(true);
 
   // 수정 권한 여부
   const hasEditPermission = canEditReservation();
 
+  // ── 예약 목록 조회 ───────────────────────────
+
+  const fetchReservations = async () => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      const response = await fetch("http://localhost:8080/api/admin/reservations", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error("예약 목록 조회 실패");
+        return;
+      }
+
+      const data = await response.json();
+      setReservations(data);
+    } catch (error) {
+      console.error("서버 연결 실패", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReservations();
+  }, []);
+
+  // ── 예약 강제 취소 ───────────────────────────
+
+  const onForceCancel = async (reservationId: number) => {
+    if (!hasEditPermission) return;
+    if (!window.confirm("정말 강제 취소하시겠습니까?")) return;
+
+    try {
+      const token = localStorage.getItem("adminToken");
+      const response = await fetch(
+        `http://localhost:8080/api/admin/reservations/${reservationId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("예약 강제취소 실패");
+        return;
+      }
+
+      // 취소 성공 시 목록 새로고침
+      fetchReservations();
+    } catch (error) {
+      console.error("서버 연결 실패", error);
+    }
+  };
+
+  // ── 필터링 ─────────────────────────────────
+
   const filteredReservations = activeFilter === "all"
     ? reservations
     : reservations.filter((r) => r.status === activeFilter);
-
-  const onForceCancel = (id: string) => {
-    if (!hasEditPermission) return;
-    if (!window.confirm("정말 강제 취소하시겠습니까?")) return;
-    setReservations((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: "cancel" } : r))
-    );
-  };
 
   return (
     <AdminLayout adminName="홍길동">
@@ -122,17 +187,23 @@ const AdminReservationPage = () => {
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">예약번호</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">회원명</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">충전소</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">충전기 타입</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">예약일</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">시간</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">회원 ID</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">충전기 ID</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">차량번호</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">시작시간</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">종료시간</th>
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">상태</th>
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">관리</th>
               </tr>
             </thead>
             <tbody>
-              {filteredReservations.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-300">
+                    불러오는 중...
+                  </td>
+                </tr>
+              ) : filteredReservations.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-300">
                     해당 상태의 예약이 없습니다
@@ -142,24 +213,24 @@ const AdminReservationPage = () => {
                 filteredReservations.map((reservation) => {
                   const style = reservationStatusStyles[reservation.status];
                   return (
-                    <tr key={reservation.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                      <td className="px-5 py-3 text-gray-400">{reservation.id}</td>
-                      <td className="px-5 py-3 text-gray-700 font-medium">{reservation.userName}</td>
-                      <td className="px-5 py-3 text-gray-600">{reservation.stationName}</td>
-                      <td className="px-5 py-3 text-gray-600">{reservation.chargerType}</td>
-                      <td className="px-5 py-3 text-gray-600">{reservation.date}</td>
-                      <td className="px-5 py-3 text-gray-600">{reservation.time}</td>
+                    <tr key={reservation.reservationId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3 text-gray-400">{reservation.reservationId}</td>
+                      <td className="px-5 py-3 text-gray-700 font-medium">{reservation.memberId}</td>
+                      <td className="px-5 py-3 text-gray-600">{reservation.chargerId}</td>
+                      <td className="px-5 py-3 text-gray-600">{reservation.carNumber}</td>
+                      <td className="px-5 py-3 text-gray-600">{reservation.startTime?.slice(0, 10)}</td>
+                      <td className="px-5 py-3 text-gray-600">{reservation.endTime?.slice(0, 10)}</td>
                       <td className="px-5 py-3">
                         <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>
                           {style.label}
                         </span>
                       </td>
 
-                      {/* 강제취소 버튼 — 권한 없으면 비활성화 */}
+                      {/* 강제취소 버튼 — RESERVED / CHARGING 상태일 때만 표시 */}
                       <td className="px-5 py-3">
-                        {(reservation.status === "upcoming" || reservation.status === "ongoing") && (
+                        {(reservation.status === "RESERVED" || reservation.status === "CHARGING") && (
                           <button
-                            onClick={() => onForceCancel(reservation.id)}
+                            onClick={() => onForceCancel(reservation.reservationId)}
                             disabled={!hasEditPermission}
                             className={`text-xs transition-colors
                               ${hasEditPermission
