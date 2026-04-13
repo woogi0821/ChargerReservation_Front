@@ -1,218 +1,148 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import api from "../../services/api";
 import { AdminLayout } from "../../components/admin/AdminLayout";
+// ✅ 팀원들의 컴포넌트 import
+import Button from "../../components/common/Button";
+import Modal from "../../components/common/Modal";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 
-// ─────────────────────────────────────────────
-// 타입 정의
-// ─────────────────────────────────────────────
-
-interface Penalty {
-  penaltyId: number;
-  memberId: string;
-  reservationId: number;
-  carNumber: string;
-  reason: string;
-  nudgeCount: number;
-  status: "ACTIVE" | "CLEARED" | "CANCELED";
-  notiSentYn: string;
-  insertTime: string;
-}
-
-// ─────────────────────────────────────────────
-// 상태별 스타일 딕셔너리
-// ─────────────────────────────────────────────
-
-const penaltyStatusStyles: {
-  [key in "ACTIVE" | "CLEARED" | "CANCELED"]: {
-    label: string;
-    badge: string;
-  };
-} = {
-  ACTIVE:   { label: "적용중", badge: "bg-red-50 text-red-600"    },
-  CLEARED:  { label: "만료",   badge: "bg-gray-100 text-gray-400" },
-  CANCELED: { label: "취소됨", badge: "bg-blue-50 text-blue-600"  },
-};
-
-// ─────────────────────────────────────────────
-// 권한 체크
-// SUPER 또는 INQUIRY 파트만 취소 가능
-// ─────────────────────────────────────────────
-
-const canEditPenalty = (): boolean => {
-  const adminRole = localStorage.getItem("adminRole");
-  const adminPart = localStorage.getItem("adminPart");
-  return adminRole === "SUPER" || adminPart === "INQUIRY";
-};
-
-// ─────────────────────────────────────────────
-// 컴포넌트
-// ─────────────────────────────────────────────
-
 const AdminPenaltyPage = () => {
+  const [reservations, setReservations] = useState<any[]>([]);
 
-  const [penalties, setPenalties] = useState<Penalty[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // 🎯 핵심: 선택된 예약 정보를 담을 상태 (State)
+  const [selectedRes, setSelectedRes] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 수정 권한 여부
-  const hasEditPermission = canEditPenalty();
-
-  // ── 패널티 목록 조회 ───────────────────────
-
-  const fetchPenalties = async () => {
-    try {
-      const token = localStorage.getItem("adminToken");
-      const response = await fetch("http://localhost:8080/api/admin/penalties", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        console.error("패널티 목록 조회 실패");
-        return;
-      }
-
-      const data = await response.json();
-      setPenalties(data);
-    } catch (error) {
-      console.error("서버 연결 실패", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // 1. 데이터 로드 (2단계 내용)
   useEffect(() => {
-    fetchPenalties();
+    fetchData();
   }, []);
 
-  // ── 패널티 취소 처리 ───────────────────────
-
-  const onCancelPenalty = async (penaltyId: number) => {
-    if (!window.confirm("정말 패널티를 취소하시겠습니까?")) return;
-
+  const fetchData = async () => {
     try {
-      const token = localStorage.getItem("adminToken");
-      const response = await fetch(
-        `http://localhost:8080/api/admin/penalties/${penaltyId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        console.error("패널티 취소 실패");
-        return;
-      }
-
-      // 취소 성공 시 목록 새로고침
-      fetchPenalties();
-    } catch (error) {
-      console.error("서버 연결 실패", error);
+      const response = await api.get("/reservations/admin/all");
+      setReservations(response.data);
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  return (
-    <AdminLayout adminName="홍길동">
+  // 2. 패널티 버튼 클릭 핸들러
+  const handlePenaltyClick = (res: any) => {
+    setSelectedRes(res); // 어떤 예약을 선택했는지 기억!
+    setIsModalOpen(true); // 모달 열기
+  };
+  // 4단계: 실제 패널티 처리 API 호출
+  const handleConfirmPenalty = async () => {
+    if (!selectedRes) return;
 
-      <AdminPageHeader title="패널티 관리" />
+    try {
+      // 1단계에서 만든 서비스 함수 호출
+      const response = await api.post("/sms/send-penalty", {
+        reservationId: selectedRes.id,
+        reason: "충전소 장기 점유로 인한 패널티 부여",
+      });
 
-      <div className="bg-white border border-gray-100 shadow-sm">
+      if (response.data.success) {
+        alert("✅ 패널티 처리가 완료되었습니다.");
 
-        {/* 섹션 헤더 */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-          <div className="w-1 h-4 bg-blue-700" />
-          <h2 className="text-sm font-semibold text-gray-700 tracking-wide">
-            패널티 목록
-          </h2>
-          <span className="text-xs text-gray-400">
-            총 {penalties.length}건
-          </span>
+        // 2. 모달 닫기
+        setIsModalOpen(false);
+
+        // 3. 목록 새로고침 (상태가 바뀌었으니 화면을 다시 그림)
+        fetchData();
+      }
+    } catch (error: any) {
+      console.error("발송 에러:", error);
+      alert("❌ 실패: " + (error.response?.data?.message || "서버 오류 발생"));
+    }
+  };
+
+ return (
+  <AdminLayout adminName="홍길동">
+    <AdminPageHeader title="패널티 관리" />
+    
+    <div className="bg-white border border-gray-100 shadow-sm">
+      {/* ✅ 1. 테이블 태그를 반드시 넣어줘야 합니다! */}
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-100 bg-gray-50">
+            <th className="px-5 py-3 text-left text-xs text-gray-400 font-medium">예약 ID</th>
+            <th className="px-5 py-3 text-left text-xs text-gray-400 font-medium">사용자명</th>
+            <th className="px-5 py-3 text-left text-xs text-gray-400 font-medium">관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          {/* ✅ 2. 맵핑된 내용은 <tbody> 안에 들어가야 합니다 */}
+          {reservations.map((res) => (
+            <tr key={res.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+              <td className="px-5 py-3">{res.id}</td>
+              <td className="px-5 py-3">{res.memberName}</td>
+              <td className="px-5 py-3">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={res.isAlertSent === "Y"}
+                  onClick={() => handlePenaltyClick(res)}
+                >
+                  {res.isAlertSent === "Y" ? "발송 완료" : "패널티 발송"}
+                </Button>
+              </td>
+            </tr>
+          ))}
+          
+          {/* 만약 데이터가 없을 때의 처리 (팀원 코드 응용) */}
+          {reservations.length === 0 && (
+            <tr>
+              <td colSpan={3} className="px-5 py-10 text-center text-gray-300">
+                패널티 대상 예약이 없습니다.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+      {/* =====================================================
+          STEP 3 핵심: 통제권 부여 모달
+          ===================================================== */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="패널티 문자 발송 확인"
+      >
+        <div className="flex flex-col gap-4">
+          {selectedRes && (
+            <div className="bg-blue-50 p-4 rounded-xl text-sm">
+              <p>
+                <strong>대상자:</strong> {selectedRes.memberName} 님
+              </p>
+              <p>
+                <strong>예약번호:</strong> {selectedRes.id}
+              </p>
+              <p className="text-red-600 mt-2 font-bold">
+                ⚠️ 확인을 누르면 사용자에게 패널티 안내 문자가 즉시 발송됩니다.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-3 mt-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setIsModalOpen(false)}
+            >
+              취소
+            </Button>
+            <Button
+              variant="danger"
+              className="flex-1"
+              onClick={handleConfirmPenalty}
+            >
+              문자 발송 확정
+            </Button>
+          </div>
         </div>
-
-        {/* 패널티 테이블 */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">번호</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">회원 ID</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">차량번호</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">사유</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">독촉횟수</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">상태</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">등록일</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">관리</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-300">
-                    불러오는 중...
-                  </td>
-                </tr>
-              ) : penalties.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-300">
-                    패널티 내역이 없습니다
-                  </td>
-                </tr>
-              ) : (
-                penalties.map((penalty) => {
-                  const style = penaltyStatusStyles[penalty.status];
-                  return (
-                    <tr
-                      key={penalty.penaltyId}
-                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-5 py-3 text-gray-400">{penalty.penaltyId}</td>
-                      <td className="px-5 py-3 text-gray-700 font-medium">{penalty.memberId}</td>
-                      <td className="px-5 py-3 text-gray-600">{penalty.carNumber}</td>
-                      <td className="px-5 py-3 text-gray-600">{penalty.reason}</td>
-                      <td className="px-5 py-3 text-gray-600">{penalty.nudgeCount}회</td>
-
-                      {/* 상태 뱃지 */}
-                      <td className="px-5 py-3">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>
-                          {style.label}
-                        </span>
-                      </td>
-
-                      <td className="px-5 py-3 text-gray-500">
-                        {penalty.insertTime?.slice(0, 10)}
-                      </td>
-
-                      {/* 취소 버튼 — ACTIVE 상태일 때만 표시 / 권한 없으면 비활성화 */}
-                      <td className="px-5 py-3">
-                        {penalty.status === "ACTIVE" && (
-                          <button
-                            onClick={() => onCancelPenalty(penalty.penaltyId)}
-                            disabled={!hasEditPermission}
-                            className={`text-xs transition-colors
-                              ${hasEditPermission
-                                ? "text-red-500 hover:text-red-700"
-                                : "text-gray-300 cursor-not-allowed"
-                              }`}
-                          >
-                            취소
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+      </Modal>
     </AdminLayout>
   );
 };
