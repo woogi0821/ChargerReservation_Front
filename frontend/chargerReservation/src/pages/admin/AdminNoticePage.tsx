@@ -1,88 +1,53 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 
-// ─────────────────────────────────────────────
-// 타입 정의
-// ─────────────────────────────────────────────
-
 interface Notice {
-  noticeId: number;
+  id: string;
   title: string;
   content: string;
-  writerId: string;
-  fixYn: string;
-  deleteYn: string;
-  insertTime: string;
+  author: string;
+  createdAt: string;
+  isPinned: boolean;
 }
 
 interface NoticeForm {
   title: string;
   content: string;
-  fixYn: string;
+  isPinned: boolean;
 }
 
-// ─────────────────────────────────────────────
-// 폼 초기값
-// ─────────────────────────────────────────────
+const INITIAL_NOTICES: Notice[] = [
+  { id: "n001", title: "시스템 점검 안내",           content: "2026년 4월 1일 새벽 2시부터 4시까지 시스템 점검이 진행됩니다.",      author: "홍길동", createdAt: "2026.03.30", isPinned: true  },
+  { id: "n002", title: "충전 요금 변경 안내",         content: "2026년 4월부터 급속 충전 요금이 일부 조정됩니다.",                   author: "홍길동", createdAt: "2026.03.28", isPinned: true  },
+  { id: "n003", title: "신규 충전소 오픈 안내",       content: "강남 코엑스점이 새롭게 오픈했습니다. 많은 이용 부탁드립니다.",       author: "홍길동", createdAt: "2026.03.25", isPinned: false },
+  { id: "n004", title: "앱 업데이트 안내 (v2.1.0)",  content: "예약 시스템 개선 및 버그 수정이 포함된 업데이트가 배포되었습니다.", author: "홍길동", createdAt: "2026.03.20", isPinned: false },
+  { id: "n005", title: "이벤트 안내 — 첫 충전 무료", content: "신규 회원 가입 후 첫 충전 시 1회 무료 혜택을 드립니다.",            author: "홍길동", createdAt: "2026.03.15", isPinned: false },
+];
 
 const EMPTY_FORM: NoticeForm = {
   title: "",
   content: "",
-  fixYn: "N",
+  isPinned: false,
 };
 
-// ─────────────────────────────────────────────
-// 권한 체크 — SUPER 만 작성/수정/삭제 가능
-// ─────────────────────────────────────────────
-
+// 공지사항 수정 권한 체크
+// SUPER 만 공지 작성/수정/삭제 가능
 const canEditNotice = (): boolean => {
   const adminRole = localStorage.getItem("adminRole");
   return adminRole === "SUPER";
 };
 
-// ─────────────────────────────────────────────
-// 컴포넌트
-// ─────────────────────────────────────────────
-
 const AdminNoticePage = () => {
 
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [notices, setNotices] = useState<Notice[]>(INITIAL_NOTICES);
   const [modalMode, setModalMode] = useState<"write" | "edit" | null>(null);
   const [editNotice, setEditNotice] = useState<Notice | null>(null);
   const [detailNotice, setDetailNotice] = useState<Notice | null>(null);
   const [form, setForm] = useState<NoticeForm>(EMPTY_FORM);
 
+  // 수정 권한 여부
   const hasEditPermission = canEditNotice();
-
-  // ── 공지사항 목록 조회 ───────────────────────
-
-  const fetchNotices = async () => {
-    try {
-      const token = localStorage.getItem("adminToken");
-      const response = await fetch("http://localhost:8080/api/admin/notices", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) return;
-      const data = await response.json();
-      setNotices(data);
-    } catch (error) {
-      console.error("서버 연결 실패", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotices();
-  }, []);
-
-  // ── 모달 닫기 ───────────────────────────────
 
   const onCloseModal = () => {
     setModalMode(null);
@@ -102,81 +67,44 @@ const AdminNoticePage = () => {
     setForm({
       title: notice.title,
       content: notice.content,
-      fixYn: notice.fixYn,
+      isPinned: notice.isPinned,
     });
     setEditNotice(notice);
     setModalMode("edit");
   };
 
-  // ── 공지사항 등록 ────────────────────────────
-
-  const onAddNotice = async () => {
+  const onAddNotice = () => {
     if (!form.title.trim() || !form.content.trim()) return;
-    try {
-      const token = localStorage.getItem("adminToken");
-      const response = await fetch("http://localhost:8080/api/admin/notices", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify(form),
-      });
-      if (!response.ok) return;
-      fetchNotices();
-      onCloseModal();
-    } catch (error) {
-      console.error("서버 연결 실패", error);
-    }
+    const newNotice: Notice = {
+      id: "n" + String(notices.length + 1).padStart(3, "0"),
+      title: form.title,
+      content: form.content,
+      author: "홍길동",
+      createdAt: new Date().toLocaleDateString("ko-KR", {
+        year: "numeric", month: "2-digit", day: "2-digit"
+      }).replace(/\. /g, ".").replace(".", ".").slice(0, 10),
+      isPinned: form.isPinned,
+    };
+    setNotices((prev) => [newNotice, ...prev]);
+    onCloseModal();
   };
 
-  // ── 공지사항 수정 ────────────────────────────
-
-  const onEditNotice = async () => {
+  const onEditNotice = () => {
     if (!editNotice || !form.title.trim() || !form.content.trim()) return;
-    try {
-      const token = localStorage.getItem("adminToken");
-      const response = await fetch(
-        `http://localhost:8080/api/admin/notices/${editNotice.noticeId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify(form),
-        }
-      );
-      if (!response.ok) return;
-      fetchNotices();
-      onCloseModal();
-    } catch (error) {
-      console.error("서버 연결 실패", error);
-    }
+    setNotices((prev) =>
+      prev.map((n) =>
+        n.id === editNotice.id
+          ? { ...n, title: form.title, content: form.content, isPinned: form.isPinned }
+          : n
+      )
+    );
+    onCloseModal();
   };
 
-  // ── 공지사항 삭제 ────────────────────────────
-
-  const onDeleteNotice = async (noticeId: number) => {
+  const onDeleteNotice = (id: string) => {
     if (!hasEditPermission) return;
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
-    try {
-      const token = localStorage.getItem("adminToken");
-      const response = await fetch(
-        `http://localhost:8080/api/admin/notices/${noticeId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        }
-      );
-      if (!response.ok) return;
-      fetchNotices();
-    } catch (error) {
-      console.error("서버 연결 실패", error);
-    }
+    setNotices((prev) => prev.filter((n) => n.id !== id));
   };
 
   return (
@@ -192,6 +120,7 @@ const AdminNoticePage = () => {
             <span className="text-xs text-gray-400">총 {notices.length}건</span>
           </div>
 
+          {/* 공지 작성 버튼 — SUPER 만 가능 */}
           <button
             onClick={onOpenWriteModal}
             disabled={!hasEditPermission}
@@ -217,13 +146,7 @@ const AdminNoticePage = () => {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-300">
-                    불러오는 중...
-                  </td>
-                </tr>
-              ) : notices.length === 0 ? (
+              {notices.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-300">
                     등록된 공지사항이 없습니다
@@ -231,11 +154,11 @@ const AdminNoticePage = () => {
                 </tr>
               ) : (
                 notices.map((notice) => (
-                  <tr key={notice.noticeId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3 text-gray-400">{notice.noticeId}</td>
+                  <tr key={notice.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-3 text-gray-400">{notice.id}</td>
                     <td className="px-5 py-3 cursor-pointer" onClick={() => setDetailNotice(notice)}>
                       <div className="flex items-center gap-2">
-                        {notice.fixYn === "Y" && (
+                        {notice.isPinned && (
                           <span className="px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 font-medium rounded-sm">고정</span>
                         )}
                         <span className="text-gray-700 font-medium hover:text-blue-700 transition-colors">
@@ -243,9 +166,10 @@ const AdminNoticePage = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-gray-500">{notice.writerId}</td>
-                    <td className="px-5 py-3 text-gray-500">{notice.insertTime?.slice(0, 10)}</td>
+                    <td className="px-5 py-3 text-gray-500">{notice.author}</td>
+                    <td className="px-5 py-3 text-gray-500">{notice.createdAt}</td>
 
+                    {/* 수정 / 삭제 버튼 — SUPER 만 가능 */}
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <button
@@ -260,7 +184,7 @@ const AdminNoticePage = () => {
                           수정
                         </button>
                         <button
-                          onClick={() => onDeleteNotice(notice.noticeId)}
+                          onClick={() => onDeleteNotice(notice.id)}
                           disabled={!hasEditPermission}
                           className={`text-xs transition-colors
                             ${hasEditPermission
@@ -293,17 +217,16 @@ const AdminNoticePage = () => {
             </div>
             <div className="px-6 py-5">
               <div className="flex items-center gap-2 mb-3">
-                {detailNotice.fixYn === "Y" && (
+                {detailNotice.isPinned && (
                   <span className="px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 font-medium rounded-sm">고정</span>
                 )}
                 <h4 className="text-base font-semibold text-gray-800">{detailNotice.title}</h4>
               </div>
-              <p className="text-xs text-gray-400 mb-4">
-                {detailNotice.writerId} · {detailNotice.insertTime?.slice(0, 10)}
-              </p>
+              <p className="text-xs text-gray-400 mb-4">{detailNotice.author} · {detailNotice.createdAt}</p>
               <p className="text-sm text-gray-600 leading-relaxed">{detailNotice.content}</p>
             </div>
 
+            {/* 상세 모달 하단 버튼 — SUPER 만 수정 가능 */}
             <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
               <button
                 onClick={() => { setDetailNotice(null); onOpenEditModal(detailNotice); }}
@@ -364,12 +287,12 @@ const AdminNoticePage = () => {
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  id="fixYn"
-                  checked={form.fixYn === "Y"}
-                  onChange={(e) => setForm((prev) => ({ ...prev, fixYn: e.target.checked ? "Y" : "N" }))}
+                  id="isPinned"
+                  checked={form.isPinned}
+                  onChange={(e) => setForm((prev) => ({ ...prev, isPinned: e.target.checked }))}
                   className="accent-blue-700"
                 />
-                <label htmlFor="fixYn" className="text-xs text-gray-500 cursor-pointer">
+                <label htmlFor="isPinned" className="text-xs text-gray-500 cursor-pointer">
                   상단 고정 공지로 설정
                 </label>
               </div>
