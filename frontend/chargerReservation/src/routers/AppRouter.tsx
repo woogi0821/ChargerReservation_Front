@@ -1,11 +1,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ChargerMain } from "../pages/mock/KioskPage";
-import AdminPage from "../pages/admin/AdminDashboardPage";
 import AdminMemberPage from "../pages/admin/AdminMemberPage";
 import AdminChargerPage from "../pages/admin/AdminChargerPage";
 import AdminReservationPage from "../pages/admin/AdminReservationPage";
 import AdminNoticePage from "../pages/admin/AdminNoticePage";
 import { ReservationPage } from "../pages/reservation/ReservationPage";
+import { MyReservationPage } from "../pages/reservation/MyReservationPage";
 import { HomePage } from "../pages/home/HomePage";
 import Home from "../components/common/Home";
 import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
@@ -24,8 +24,11 @@ export const AppRouter = () => {
         {/* 메인 홈 — ChargeNow 디자인 시안 기반 */}
         <Route path="/" element={<HomePage />} />
 
-        {/* 예약 페이지 */}
+        {/* 예약하기 — 충전소 찾기에서 충전기 선택 후 진입 */}
         <Route path="/reservation" element={<ReservationPage />} />
+
+        {/* 내 예약 — 예약 목록 조회 및 취소 */}
+        <Route path="/reservations" element={<MyReservationPage />} />
 
         {/* SMS 테스트 페이지 (기존 유지) */}
         <Route path="/test-sms" element={<Home />} />

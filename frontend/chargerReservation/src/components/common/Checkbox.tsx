@@ -35,9 +35,9 @@ export const CheckBox = forwardRef<HTMLInputElement, CheckBoxProps>(
       checked:after:font-bold
     `;
 
-    // 2. 용도(Variant) 딕셔너리 (프로젝트 테마 컬러: green)
+    // 2. 용도(Variant) 딕셔너리 (디자인 시안 primary 컬러: #3B82F6 blue)
     const variantStyles = {
-      primary: "border-zinc-300 checked:bg-green-500 checked:border-green-500 focus:ring-green-200 group-hover:border-green-400",
+      primary: "border-[#DBEAFE] checked:bg-[#3B82F6] checked:border-[#3B82F6] focus:ring-[rgba(59,130,246,0.15)] group-hover:border-[#3B82F6]",
       danger: "border-red-200 checked:bg-red-500 checked:border-red-500 focus:ring-red-200 group-hover:border-red-400",
     };
 

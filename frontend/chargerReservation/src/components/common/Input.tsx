@@ -23,7 +23,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     // 3. 상태별 색상 (Dictionary Pattern)
     const statusStyle = error
       ? "border-red-500 focus:ring-red-100" // 에러 시 빨간 테두리
-      : "border-zinc-200 focus:border-green-500 focus:ring-green-100"; // 정상 시 초록 테두리
+      : "border-[#DBEAFE] focus:border-[#3B82F6] focus:ring-[rgba(59,130,246,0.1)]"; // 정상 시 파란 테두리 (디자인 시안 primary)
 
     // 4. 크기 규격
     const sizeStyles = {
