@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ChargerMain } from "../pages/mock/KioskPage";
-import AdminPage from "../pages/admin/AdminDashboardPage";
 import AdminMemberPage from "../pages/admin/AdminMemberPage";
 import AdminChargerPage from "../pages/admin/AdminChargerPage";
 import AdminReservationPage from "../pages/admin/AdminReservationPage";
@@ -11,7 +10,9 @@ import Home from "../components/common/Home";
 import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminPenaltyPage from "../pages/admin/AdminPenaltyPage";
 import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
+
 import AdminLoginPage from "../pages/admin/AdminLoginPage";
+import Stations from "../pages/station/Stations";
 
 export const AppRouter = () => {
   return (
@@ -35,9 +36,6 @@ export const AppRouter = () => {
                    ========================================== */}
         <Route path="kiosk" element={<ChargerMain />} />
 
-        {/* 관리자 로그인 */}
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-
 
         {/* 관리자 페이지들 (팀장님 기존 코드 유지) */}
         <Route path="/admin" element={<AdminDashboardPage />} />
@@ -47,6 +45,8 @@ export const AppRouter = () => {
         <Route path="/admin/notice" element={<AdminNoticePage />} />
         <Route path="/admin/penalty" element={<AdminPenaltyPage />} />
         <Route path="/admin/inquiry" element={<AdminInquiryPage />} />
+        {/* 충전소 조회 페이지 */}
+        <Route path="/stations" element={<Stations />} />
       </Routes>
     </BrowserRouter>
   );
