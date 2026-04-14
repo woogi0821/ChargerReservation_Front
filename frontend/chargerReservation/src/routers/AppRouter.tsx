@@ -10,8 +10,8 @@ import Home from "../components/common/Home";
 import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminPenaltyPage from "../pages/admin/AdminPenaltyPage";
 import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
-import AdminLoginPage from "../pages/admin/AdminLoginPage";
 import OAuth2RedirectHandler from "../pages/member/Auth/OAuth2RedirectHandler";
+import Stations from "../pages/station/Stations";
 import MainLayout from "../layout/basic/basicLayout";
 
 export const AppRouter = () => {
