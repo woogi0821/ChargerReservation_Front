@@ -9,9 +9,10 @@ import { loginValidation } from "../../../validation/authValidation";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
+  onClose?: () => void;
 }
 
-function LoginForm({ onSwitchToSignup }: LoginFormProps) {
+function LoginForm({ onSwitchToSignup, onClose }: LoginFormProps) {
   const { login } = useAuthStore();
   const nav = useNavigate();
 
@@ -28,6 +29,8 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
 
       localStorage.setItem("accessToken", accessToken);
       login(memberGrade);
+
+      if (onClose) { onClose(); }
 
       // 로그인 성공 시 이동 로직
       if (memberGrade === "Y") {
