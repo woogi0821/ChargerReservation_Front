@@ -12,7 +12,7 @@ interface LoginFormProps {
 }
 
 function LoginForm({ onSwitchToSignup }: LoginFormProps) {
-  const { login } = useAuthStore();
+  const { login, closeModal } = useAuthStore();
   const nav = useNavigate();
 
   // 로그인 처리 로직 통합
@@ -28,6 +28,8 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
 
       localStorage.setItem("accessToken", accessToken);
       login(memberGrade);
+
+      closeModal();
 
       // 로그인 성공 시 이동 로직
       if (memberGrade === "Y") {
