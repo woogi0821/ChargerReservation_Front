@@ -10,9 +10,9 @@ import Home from "../components/common/Home";
 import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminPenaltyPage from "../pages/admin/AdminPenaltyPage";
 import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
-
-
+import OAuth2RedirectHandler from "../pages/member/Auth/OAuth2RedirectHandler";
 import Stations from "../pages/station/Stations";
+import MainLayout from "../layout/basic/basicLayout";
 
 export const AppRouter = () => {
   return (
@@ -23,7 +23,14 @@ export const AppRouter = () => {
            ========================================== */}
 
         {/* 메인 홈 — ChargeNow 디자인 시안 기반 */}
-        <Route path="/" element={<HomePage />} />
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<HomePage />} />
+
+          {/* 헤더가 필요한 페이지 여기에 넣으세요 */}
+        </Route>
+
+        {/* 소셜 회원가입 */}
+        <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
 
         {/* 예약 페이지 */}
         <Route path="/reservation" element={<ReservationPage />} />
@@ -36,6 +43,8 @@ export const AppRouter = () => {
                    ========================================== */}
         <Route path="kiosk" element={<ChargerMain />} />
 
+        {/* 관리자 로그인 */}
+        {/* <Route path="/admin/login" element={<AdminLoginPage />} /> */}
 
         {/* 관리자 페이지들 (팀장님 기존 코드 유지) */}
         <Route path="/admin" element={<AdminDashboardPage />} />
@@ -45,9 +54,10 @@ export const AppRouter = () => {
         <Route path="/admin/notice" element={<AdminNoticePage />} />
         <Route path="/admin/penalty" element={<AdminPenaltyPage />} />
         <Route path="/admin/inquiry" element={<AdminInquiryPage />} />
-        {/* 충전소 조회 페이지 */}
+
         <Route path="/stations" element={<Stations />} />
       </Routes>
+        
     </BrowserRouter>
   );
 };

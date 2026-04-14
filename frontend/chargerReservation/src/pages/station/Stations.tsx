@@ -18,7 +18,8 @@ const Stations = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const [kakaoMap, setKakaoMap] = useState<any>(null);
   const circleRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  // ✅ 마커를 Map으로 관리: statId → { overlay, element }
+  const markersRef = useRef<Map<string, { overlay: any; element: HTMLDivElement }>>(new Map());
 
   const [rawStations, setRawStations] = useState<any[]>([]); 
   const [stationList, setStationList] = useState<any[]>([]); 
@@ -27,6 +28,9 @@ const Stations = () => {
   const [page, setPage] = useState(0);
   const [speedFilter, setSpeedFilter] = useState('전체');
   const [statusFilter, setStatusFilter] = useState('전체');
+  const [isParkingAvailable, setIsParkingAvailable] = useState(false);
+  const [isParkingFree, setIsParkingFree] = useState(false);
+  const [isNoRestriction, setIsNoRestriction] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const selectedStationData = stationList.find(s => s.statId === selectedStationId) || 
@@ -56,6 +60,11 @@ const Stations = () => {
     }
   }, [kakaoMap, speedFilter]);
 
+  // ✅ window.selectStationFromMap을 항상 최신 handleSelectStation으로 동기화
+  useEffect(() => {
+    window.selectStationFromMap = (id: string) => handleSelectStation(id);
+  }, [handleSelectStation]);
+
   useEffect(() => {
     const script = document.createElement('script');
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=5cc1f47f2bb48afc9e7ef7f4c698644b&libraries=services&autoload=false`;
@@ -76,19 +85,20 @@ const Stations = () => {
     };
   }, []);
 
+  // ✅ 마커 생성 및 관리 로직 (기존 유지)
   useEffect(() => {
     if (!kakaoMap || rawStations.length === 0) return;
-    markersRef.current.forEach(m => m.setMap(null));
-    
-    const newOverlays = rawStations.map((item: any) => {
-      const colorMap: any = { 
-        green: "#22C55E", amber: "#F59E0B", red: "#EF4444", black: "#1F2937", gray: "#94A3B8" 
-      };
-      const bgColor = item.warningLevel === 'TOTAL' ? colorMap.black : (colorMap[item.markerColor] || colorMap.gray);
+
+    const colorMap: any = { 
+      green: "#22C55E", amber: "#F59E0B", red: "#EF4444", black: "#1F2937", gray: "#94A3B8" 
+    };
+
+    rawStations.forEach((item: any) => {
       const isHovered = hoveredStationId === item.statId;
       const isSelected = selectedStationId === item.statId;
+      const bgColor = item.warningLevel === 'TOTAL' ? colorMap.black : (colorMap[item.markerColor] || colorMap.gray);
 
-      const content = `
+      const innerHtml = `
         <div onclick="selectStationFromMap('${item.statId}')" style="
           display:flex; flex-direction:column; align-items:center;
           transition: transform 0.2s;
@@ -97,10 +107,10 @@ const Stations = () => {
           cursor: pointer;
         ">
           <div style="position:relative; width:30px; height:36px;">
-              <svg viewBox="0 0 24 24" fill="${isSelected ? '#2563EB' : bgColor}" xmlns="http://www.w3.org/2000/svg" style="width:30px; height:36px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-                <circle cx="12" cy="9" r="3" fill="white"/>
-              </svg>
+            <svg viewBox="0 0 24 24" fill="${isSelected ? '#2563EB' : bgColor}" xmlns="http://www.w3.org/2000/svg" style="width:30px; height:36px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+              <circle cx="12" cy="9" r="3" fill="white"/>
+            </svg>
           </div>
           <div style="
             margin-top:4px; 
@@ -113,35 +123,69 @@ const Stations = () => {
         </div>
       `;
 
-      const overlay = new window.kakao.maps.CustomOverlay({
-        position: new window.kakao.maps.LatLng(item.lat, item.lng),
-        content,
-        yAnchor: 0.9
-      });
+      const existing = markersRef.current.get(item.statId);
+      if (existing) {
+        existing.element.innerHTML = innerHtml;
+      } else {
+        const container = document.createElement('div');
+        container.innerHTML = innerHtml;
+        container.style.display = 'block';
 
-      overlay.setMap(kakaoMap);
-      return overlay;
+        const overlay = new window.kakao.maps.CustomOverlay({
+          position: new window.kakao.maps.LatLng(item.lat, item.lng),
+          content: container,
+          yAnchor: 0.9
+        });
+        overlay.setMap(kakaoMap);
+        markersRef.current.set(item.statId, { overlay, element: container });
+      }
     });
-    markersRef.current = newOverlays;
   }, [kakaoMap, rawStations, hoveredStationId, selectedStationId]);
 
+  // ✅ 필터 가시성 로직 (기존 유지)
+  useEffect(() => {
+    if (markersRef.current.size === 0) return;
+    const visibleIds = new Set(displayStations.map(s => s.statId));
+    markersRef.current.forEach((markerObj, statId) => {
+      markerObj.element.style.display = visibleIds.has(statId) ? 'block' : 'none';
+    });
+  }, [displayStations]);
+
+  // ✅ 필터링 로직
 useEffect(() => {
-  let filtered = [...stationList]; 
-  
-  // 상태 필터
-  if (statusFilter === '이용 가능') filtered = filtered.filter(s => s.markerColor === 'green');
-  else if (statusFilter === '혼잡') filtered = filtered.filter(s => s.markerColor === 'amber');
-  else if (statusFilter === '만석') filtered = filtered.filter(s => s.markerColor === 'red');
-  
-  // 속도 필터 (수정된 부분: 문자열 체크 방식)
-  if (speedFilter === '급속') {
-    filtered = filtered.filter(s => s.fastChargerStatus && !s.fastChargerStatus.includes('0/0'));
-  } else if (speedFilter === '완속') {
-    filtered = filtered.filter(s => s.slowChargerStatus && !s.slowChargerStatus.includes('0/0'));
-  }
-  
+  const stationListMap = new Map(stationList.map(s => [s.statId, s]));
+
+  const filtered = rawStations.filter((s) => {
+    // 1. 상태 필터 (markerColor는 rawStations에 있음)
+    if (statusFilter === '여유' && s.markerColor !== 'green') return false;
+    if (statusFilter === '혼잡' && s.markerColor !== 'amber') return false;
+
+    // 2. stationList에 있는 항목만 상세 필터 적용
+    //    없는 항목은 급속/완속/주차 필터 건너뜀 (MarkerDto에 해당 필드 없음)
+    const detail = stationListMap.get(s.statId);
+    if (detail) {
+      // 속도 필터
+      if (speedFilter === '급속') {
+        if (!detail.fastChargerStatus || detail.fastChargerStatus.includes('0/0')) return false;
+      } else if (speedFilter === '완속') {
+        if (!detail.slowChargerStatus || detail.slowChargerStatus.includes('0/0')) return false;
+      }
+      // 주차 및 기타 필터
+      if (isParkingAvailable && detail.limitYn === 'Y') return false;
+      if (isParkingFree && detail.parkingFree !== 'Y') return false;
+      if (isNoRestriction) {
+        const ltd = (detail.limitDetail ?? "").trim();
+        const ignoreTexts = ["없음", "-", "해당없음", "null"];
+        const isIgnored = !ltd || ignoreTexts.includes(ltd) || ltd.startsWith("시설 상황에 따라");
+        if (!isIgnored) return false;
+      }
+    }
+
+    return true;
+  });
+
   setDisplayStations(filtered);
-}, [speedFilter, statusFilter, stationList]);
+}, [speedFilter, statusFilter, isParkingAvailable, isParkingFree, isNoRestriction, rawStations, stationList]);
 
   const drawStyleCircle = (map: any, position: any) => {
     if (circleRef.current) circleRef.current.setMap(null);
@@ -160,6 +204,8 @@ useEffect(() => {
     const lng = center.getLng();
     drawStyleCircle(map, center);
     setPage(0);
+    markersRef.current.forEach(({ overlay }) => overlay.setMap(null));
+    markersRef.current.clear();
     try {
       const [markerData, listData] = await Promise.all([
         stationService.getMarkersOnly(lat, lng),
@@ -196,7 +242,6 @@ useEffect(() => {
     } else { handleSearch(map); }
   };
 
-  // 💡 사이드바 변경 시 지도 리레이아웃
   useEffect(() => {
     if (kakaoMap) {
       setTimeout(() => { kakaoMap.relayout(); }, 320);
@@ -205,19 +250,31 @@ useEffect(() => {
 
   return (
     <div className="flex w-full h-screen overflow-hidden relative">
-      {/* 사이드바/상세 컨테이너 */}
       <div 
         className="z-20 h-full transition-all duration-300 ease-in-out flex shrink-0 overflow-hidden bg-white"
         style={{ width: isSidebarOpen ? (selectedStationId ? '780px' : '380px') : '0px' }}
       >
         <div className="w-[380px] h-full shrink-0 border-r">
           <StationSidebar 
-            stations={displayStations} isLoading={isLoading}
-            speedFilter={speedFilter} setSpeedFilter={setSpeedFilter}
-            statusFilter={statusFilter} setStatusFilter={setStatusFilter} 
-            onSearch={() => {}} onLoadMore={loadMore} 
+            stations={stationList} 
+            isLoading={isLoading}
+            speedFilter={speedFilter} 
+            setSpeedFilter={setSpeedFilter}
+            statusFilter={statusFilter} 
+            setStatusFilter={setStatusFilter}
+            isParkingAvailable={isParkingAvailable} 
+            setIsParkingAvailable={setIsParkingAvailable}
+            isParkingFree={isParkingFree} 
+            setIsParkingFree={setIsParkingFree}
+            isNoRestriction={isNoRestriction} 
+            setIsNoRestriction={setIsNoRestriction}
+            onLoadMore={loadMore}
             onHoverStation={setHoveredStationId}
-            onSelectStation={handleSelectStation}
+            onSelectStation={handleSelectStation} 
+            mapCenter={kakaoMap ? {
+              lat: kakaoMap.getCenter().getLat(),
+              lng: kakaoMap.getCenter().getLng()
+            } : { lat: 37.5665, lng: 126.9780 }} 
           />
         </div>
         <div className={`h-full bg-white shrink-0 transition-all duration-300 overflow-hidden ${selectedStationId ? 'w-[400px] border-r shadow-xl' : 'w-0'}`}>
@@ -227,7 +284,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* 💡 버튼을 컨테이너 외부 Absolute로 배치하여 항상 보이고 따라다니게 수정 */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         className="absolute top-1/2 -translate-y-1/2 z-40 bg-white border border-gray-200 w-6 h-14 flex items-center justify-center rounded-r-lg shadow-md transition-all duration-300"
@@ -238,7 +294,6 @@ useEffect(() => {
 
       <div className="flex-1 relative z-10 h-full min-w-0">
         <div ref={mapContainer} className="w-full h-full" />
-        {/* 범례 디자인 */}
         <div className="absolute top-4 right-4 z-[1000] flex flex-row items-center gap-2 bg-white/90 backdrop-blur-sm p-2 px-3 rounded-lg shadow-md border border-gray-100">
           <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2"><div className="w-3 h-3 rounded-full bg-green-500"></div><span className="text-[11px] font-bold text-gray-600">여유</span></div>
           <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2"><div className="w-3 h-3 rounded-full bg-amber-500"></div><span className="text-[11px] font-bold text-gray-600">혼잡</span></div>
