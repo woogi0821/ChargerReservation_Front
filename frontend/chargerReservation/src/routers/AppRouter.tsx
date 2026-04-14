@@ -11,6 +11,7 @@ import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminPenaltyPage from "../pages/admin/AdminPenaltyPage";
 import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
 import AdminLoginPage from "../pages/admin/AdminLoginPage";
+import OAuth2RedirectHandler from "../pages/member/Auth/OAuth2RedirectHandler";
 
 export const AppRouter = () => {
   return (
@@ -22,6 +23,7 @@ export const AppRouter = () => {
 
         {/* 메인 홈 — ChargeNow 디자인 시안 기반 */}
         <Route path="/" element={<HomePage />} />
+        <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
 
         {/* 예약 페이지 */}
         <Route path="/reservation" element={<ReservationPage />} />
