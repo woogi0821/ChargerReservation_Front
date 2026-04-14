@@ -11,7 +11,7 @@ import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminPenaltyPage from "../pages/admin/AdminPenaltyPage";
 import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
 
-import AdminLoginPage from "../pages/admin/AdminLoginPage";
+
 import Stations from "../pages/station/Stations";
 
 export const AppRouter = () => {
