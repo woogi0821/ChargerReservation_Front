@@ -27,7 +27,10 @@ const ALL_MENU_ITEMS: MenuItem[] = [
 const canAccessMember = (): boolean => {
   const adminRole = localStorage.getItem("adminRole");
   const adminPart = localStorage.getItem("adminPart");
-  return adminRole === "SUPER" || adminPart === "MEMBER";
+  return adminRole === "SUPER" 
+      || adminPart === "MEMBER"
+      || adminPart === "All"
+      || adminPart === null;
 };
 
 export const AdminSidebar = ({

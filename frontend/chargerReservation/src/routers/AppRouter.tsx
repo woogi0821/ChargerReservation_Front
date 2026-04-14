@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ChargerMain } from "../pages/mock/KioskPage";
-import AdminPage from "../pages/admin/AdminDashboardPage";
 import AdminMemberPage from "../pages/admin/AdminMemberPage";
 import AdminChargerPage from "../pages/admin/AdminChargerPage";
 import AdminReservationPage from "../pages/admin/AdminReservationPage";
@@ -13,6 +12,7 @@ import AdminPenaltyPage from "../pages/admin/AdminPenaltyPage";
 import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
 import AdminLoginPage from "../pages/admin/AdminLoginPage";
 import OAuth2RedirectHandler from "../pages/member/Auth/OAuth2RedirectHandler";
+import Stations from "../pages/station/Stations";
 
 export const AppRouter = () => {
   return (
@@ -49,7 +49,9 @@ export const AppRouter = () => {
         <Route path="/admin/notice" element={<AdminNoticePage />} />
         <Route path="/admin/penalty" element={<AdminPenaltyPage />} />
         <Route path="/admin/inquiry" element={<AdminInquiryPage />} />
+        <Route path="/stations" element={<Stations/>} />
       </Routes>
+        
     </BrowserRouter>
   );
 };
