@@ -23,11 +23,15 @@ const ALL_MENU_ITEMS: MenuItem[] = [
 ];
 
 // 회원관리 접근 가능한 파트 체크
-// SUPER 역할이거나 MEMBER 파트만 회원관리 메뉴 표시
+// SUPER 역할이거나 MEMBER / ALL 파트만 회원관리 메뉴 표시
+// adminPart 가 null 인 경우 (로그인 담당자와 협의 전 임시) → 일단 표시
 const canAccessMember = (): boolean => {
   const adminRole = localStorage.getItem("adminRole");
   const adminPart = localStorage.getItem("adminPart");
-  return adminRole === "SUPER" || adminPart === "MEMBER";
+  return adminRole === "SUPER"
+      || adminPart === "MEMBER"
+      || adminPart === "ALL"
+      || adminPart === null;
 };
 
 export const AdminSidebar = ({
@@ -41,7 +45,7 @@ export const AdminSidebar = ({
   const location = useLocation();
 
   // 파트에 따라 메뉴 필터링
-  // 회원관리는 SUPER 또는 MEMBER 파트만 표시
+  // 회원관리는 SUPER / MEMBER / ALL 파트만 표시
   const MENU_ITEMS = ALL_MENU_ITEMS.filter((item) => {
     if (item.path === "/admin/member") {
       return canAccessMember();
