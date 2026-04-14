@@ -3,7 +3,9 @@
 export interface IAuthState {
     loggedIn: boolean|null;
     memberGrade: string | null;
-
+    activeModal: string;
     login: (grade: string)=> void;
     logout: ()=> void;
+    setActiveModal: (state: any) => void;
+    closeModal: () => void;
 }
