@@ -11,7 +11,7 @@ export const stationService = {
       const response = await axios.get(`${API_BASE_URL}/around`, {
         params: { lat, lng, page: pageNum }
       });
-      return response.data; 
+      return response.data;
     } catch (error) {
       console.error("사이드바 목록 로드 실패:", error);
       return [];
@@ -33,22 +33,41 @@ export const stationService = {
     }
   },
 
-/**
- * 3. 특정 충전소 상세 정보 (@GetMapping("/{statId}"))
- */
-getStationDetail: async (statId: string, type: string = "급속", userLat?: number, userLng?: number) => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/${statId}`, {
-      params: { 
-        type, 
-        userLat, 
-        userLng 
-      }
-    });
-    return response.data; // 백엔드에서 생성한 StationDto 반환
-  } catch (error) {
-    console.error("상세 정보 로드 실패:", error);
-    return null;
+  /**
+   * 3. 특정 충전소 상세 정보
+   */
+  getStationDetail: async (statId: string, type: string = "급속", userLat?: number, userLng?: number) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/${statId}`, {
+        params: { 
+          type, 
+          userLat, 
+          userLng 
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error("상세 정보 로드 실패:", error);
+      return null;
+    }
+  },
+
+  /**
+   * 4. 충전소 검색 (키워드 기반)
+   */
+  searchStations: async (keyword: string, lat: number, lng: number) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/search`, {
+        params: { 
+          keyword, 
+          lat, 
+          lng 
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error("충전소 검색 실패:", error);
+      return [];
+    }
   }
-}
-};
+}; // 객체 닫는 괄호가 여기까지 와야 합니다.

@@ -8,6 +8,7 @@ import { Badge } from "../../components/common/badge";
 import { Toast } from "../../components/common/Toast";
 import Modal from "../../components/common/Modal";
 import AuthModalContainer from "../member/Auth/AuthModalContainer";
+import { useAuthStore } from "../../store/useAuthStore";
 
 // ─────────────────────────────────────────────
 // 타입 정의
@@ -116,13 +117,7 @@ const FEATURES = [
 export const HomePage = () => {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-
-  // ✅ 핵심: 모달의 '상태'를 문자열로 관리하여 중복 실행 방지
-  const [activeModal, setActiveModal] = useState<
-    "NONE" | "INFO" | "LOGIN" | "SIGNUP" | "SIGNUP_FORM"
-  >("NONE");
-  const handleCloseModal = () => setActiveModal("NONE");
-
+  const { loggedIn, setActiveModal } = useAuthStore();
   const [toastVisible, setToastVisible] = useState(false);
 
   const handleSearch = () => {
@@ -345,37 +340,39 @@ export const HomePage = () => {
       {/* =====================================================
           SECTION 4 : 하단 CTA 배너
           ===================================================== */}
-      <section className="bg-gradient-to-r from-[#1D4ED8] to-[#3B82F6] py-16 px-6 text-center text-white">
-        <h2 className="text-3xl font-black mb-3">지금 바로 시작하세요</h2>
-        <p className="text-blue-100 mb-8">회원가입 후 첫 충전 요금 10% 할인</p>
-        <div className="flex gap-3 justify-center">
-          {/* ─────────────────────────────────────────────
-              💡 [컴포넌트 이점 ⑦] Button + Toast 조합
-              "회원가입" 클릭 → 로그인 모달 오픈
-              "알림 테스트" 클릭 → Toast 컴포넌트 노출
-              두 기능 모두 컴포넌트가 처리하고 이 페이지는 state만 넘깁니다.
-          ───────────────────────────────────────────── */}
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => setActiveModal("INFO")}
-            className="bg-white text-[#1D4ED8] hover:bg-blue-50"
-          >
-            무료로 시작하기
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => {
-              setToastVisible(true);
-              setTimeout(() => setToastVisible(false), 3000);
-            }}
-            className="border-white text-white hover:bg-white/10"
-          >
-            충전소 찾기
-          </Button>
-        </div>
-      </section>
+      {!loggedIn && (
+        <section className="bg-gradient-to-r from-[#1D4ED8] to-[#3B82F6] py-16 px-6 text-center text-white">
+          <h2 className="text-3xl font-black mb-3">지금 바로 시작하세요</h2>
+          <p className="text-blue-100 mb-8">회원가입 후 첫 충전 요금 10% 할인</p>
+          <div className="flex gap-3 justify-center">
+            {/* ─────────────────────────────────────────────
+                💡 [컴포넌트 이점 ⑦] Button + Toast 조합
+                "회원가입" 클릭 → 로그인 모달 오픈
+                "알림 테스트" 클릭 → Toast 컴포넌트 노출
+                두 기능 모두 컴포넌트가 처리하고 이 페이지는 state만 넘깁니다.
+            ───────────────────────────────────────────── */}
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => setActiveModal("INFO")}
+              className="bg-white text-[#1D4ED8] hover:bg-blue-50"
+            >
+              무료로 시작하기
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                setToastVisible(true);
+                setTimeout(() => setToastVisible(false), 3000);
+              }}
+              className="border-white text-white hover:bg-white/10"
+            >
+              충전소 찾기
+            </Button>
+          </div>
+        </section>
+      )}
 
       {/* =====================================================
           SECTION 5 : 푸터
@@ -407,27 +404,6 @@ export const HomePage = () => {
           </div>
         </div>
       </footer>
-
-      {/* =====================================================
-          MODAL : 로그인 유도
-          ===================================================== */}
-      {/* ─────────────────────────────────────────────
-          💡 [컴포넌트 이점 ⑧] Modal — 열기/닫기 로직이 내부에 있음
-          isOpen, onClose만 넘기면 배경 블러, 애니메이션, 클릭 외부 닫기가
-          Modal 컴포넌트 안에서 전부 처리됩니다.
-          이 페이지는 true/false 상태만 관리합니다.
-      ───────────────────────────────────────────── */}
-      <Modal
-        isOpen={activeModal !== "NONE"}
-        onClose={handleCloseModal}
-        title=""
-      >
-        <AuthModalContainer
-          activeModal={activeModal as any}
-          setActiveModal={setActiveModal}
-          handleCloseModal={handleCloseModal}
-        />
-      </Modal>
 
       {/* =====================================================
           TOAST : 알림 메시지
