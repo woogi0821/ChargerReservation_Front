@@ -1,11 +1,74 @@
 import { useAuthStore } from '../../store/useAuthStore';
 import Button from '../../components/common/Button';
+import { useLogout } from '../../hook/useLogout';
 import { useNavigate } from 'react-router-dom';
 import AuthService from '../../services/AuthService';
+import { useEffect, useState } from 'react';
+import type { NotificationResponseDto } from '../../services/notificationService';
+import notificationService from '../../services/notificationService';
+  
+  
+  const Header = () => {
+  const { loggedIn, setActiveModal } = useAuthStore();
+  const { handleLogout } = useLogout();
 
 const Header = () => {
   const { loggedIn, logout, setActiveModal } = useAuthStore();
   const navigate = useNavigate();
+
+  // --- 알림 관련 상태 추가 ---
+  const [notifications, setNotifications] = useState<NotificationResponseDto[]>([]);
+  const [isNotiOpen, setIsNotiOpen] = useState(false);
+
+  // [3단계] 실시간 알림 데이터 가져오기 : 로그인 상태일 때만 실행
+  useEffect(() => {
+    if (loggedIn) {
+      const fetchNotis = async () => {
+        try {
+          const response = await notificationService.getMyNotifications();
+          console.log("🛠️ 백엔드에서 온 날것의 데이터:", response); // 👈 F12 콘솔에서 이 모양을 꼭 보세요!
+
+        // 1. response 자체가 배열인 경우
+        if (Array.isArray(response)) {
+          setNotifications(response);
+        } 
+        // 2. response.data가 배열인 경우 (Axios나 공통 응답 객체 사용 시)
+        else if (response && Array.isArray((response as any).data)) {
+          setNotifications((response as any).data);
+        }
+        // 3. 만약 데이터가 없거나 다른 모양이면 빈 배열로 초기화 (에러 방지)
+        else {
+          console.warn("⚠️ 데이터 형식이 배열이 아닙니다. 빈 배열로 설정합니다.");
+          setNotifications([]);
+        }
+      } catch (error) {
+        console.error("❌ 알림 로드 중 진짜 에러 발생:", error);
+        setNotifications([]); // 에러 시에도 빈 배열을 넣어 화면 터짐 방지
+      }
+    };
+    fetchNotis();
+  }
+}, [loggedIn]);
+
+  // [4단계 예정] 알림 클릭 핸들러
+  const handleNotiClick = async (noti: NotificationResponseDto) => {
+    try {
+      if (noti.isRead === 'N') {
+        await notificationService.readNotification(noti.notiId);
+        setNotifications(prev => 
+          prev.map(n => n.notiId === noti.notiId ? { ...n, isRead: 'Y' } : n)
+        );
+      }
+      setIsNotiOpen(false);
+      navigate(noti.targetUrl); // 해당 페이지로 이동
+    } catch (error) {
+      console.error("알림 처리 에러:", error);
+    }
+  };
+
+  const unreadCount = Array.isArray(notifications) 
+  ? notifications.filter(n => n.isRead === 'N').length 
+  : 0;
 
   const handleLogout = async () => {
     if (!window.confirm("로그아웃 하시겠습니까?")) return;
@@ -43,6 +106,49 @@ const Header = () => {
         <div className="flex items-center gap-4">
           {loggedIn ? (
             <>
+            {/* 🔔 알림 아이콘 추가 */}
+              <div className="relative mr-2">
+                <button 
+                  onClick={() => setIsNotiOpen(!isNotiOpen)}
+                  className="relative p-2.5 text-zinc-600 hover:bg-[#3B82F6]/10 rounded-full transition-all active:scale-90"
+                >
+                  <span className="text-2xl">🔔</span>
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-white">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* 알림 드롭다운 디자인 */}
+                {isNotiOpen && (
+                  <div className="absolute right-0 mt-4 w-80 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-4 bg-zinc-50 border-b border-zinc-100 flex justify-between items-center">
+                      <span className="font-bold text-zinc-800">새로운 알림</span>
+                      <span className="text-xs text-[#3B82F6] font-medium">최신순</span>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="py-10 text-center text-zinc-400 text-sm">알림이 없습니다.</div>
+                      ) : (
+                        notifications.map(noti => (
+                          <div 
+                            key={noti.notiId}
+                            onClick={() => handleNotiClick(noti)}
+                            className={`p-4 border-b border-zinc-50 cursor-pointer transition-colors hover:bg-zinc-50 ${noti.isRead === 'N' ? 'bg-blue-50/40' : 'white'}`}
+                          >
+                            <p className={`text-sm font-bold mb-1 ${noti.isRead === 'N' ? 'text-[#3B82F6]' : 'text-zinc-700'}`}>
+                              {noti.title}
+                            </p>
+                            <p className="text-xs text-zinc-500 leading-snug">{noti.message}</p>
+                            <p className="text-[10px] text-zinc-400 mt-2">{noti.createdAt}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <a 
                 href="/mypage" 
                 className="px-5 py-3 text-zinc-700 text-[1.05rem] font-semibold transition-colors hover:text-[#3B82F6]"

@@ -16,7 +16,7 @@ export const loginValidation = Yup.object().shape({
 // 회원가입 전용 검증
 export const authValidation = Yup.object().shape({
   loginId: Yup.string()
-    .matches(idRegExp, "영문을 포함한 영문/숫자 조합이어야 합니다.")
+    .matches(idRegExp, "공백 및 특수 문자는 사용할 수 없습니다.")
     .required("아이디는 필수 입력 항목입니다.")
     .min(4, "아이디는 4자 이상이어야 합니다."),
   loginPw: Yup.string()
