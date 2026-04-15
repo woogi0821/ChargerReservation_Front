@@ -11,47 +11,40 @@ import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminPenaltyPage from "../pages/admin/AdminPenaltyPage";
 import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
 import OAuth2RedirectHandler from "../pages/member/Auth/OAuth2RedirectHandler";
-import MainLayout from "../layout/basic/basicLayout";
+import BasicLayout from "../layout/basic/basicLayout";
 import Stations from "../pages/station/Stations";
 import ProtectedRoute from "../common/ProtectedRoute";
 import MyPage from "../pages/member/MyPage";
-import Stations from "../pages/station/Stations";
-import BasicLayout from "../layout/basic/basicLayout";
 
 export const AppRouter = () => {
   return (
     <BrowserRouter>
       <Routes>
         {/* ==========================================
-            1. 일반 사용자 영역
+            1. 일반 사용자 영역 (헤더 포함)
            ========================================== */}
-
-        {/* 메인 홈 — ChargeNow 디자인 시안 기반 */}
         <Route element={<BasicLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/mypage" element={<MyPage />} />
-
-          {/* 헤더가 필요한 페이지 여기에 넣으세요 */}
+          <Route path="/stations" element={<Stations />} />
+          <Route path="/reservation" element={<ReservationPage />} />
+          <Route path="/reservations" element={<MyPage />} />
         </Route>
 
-        {/* 소셜 회원가입 */}
+        {/* 소셜 로그인 콜백 */}
         <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
-
-        {/* 예약 페이지 */}
-        <Route path="/reservation" element={<ReservationPage />} />
 
         {/* SMS 테스트 페이지 (기존 유지) */}
         <Route path="/test-sms" element={<Home />} />
 
         {/* ==========================================
-                    2. 독립 영역 (키오스크 및 테스트/관리자)
-                   ========================================== */}
-        <Route path="kiosk" element={<ChargerMain />} />
+            2. 독립 영역 (키오스크 — 헤더 없음)
+           ========================================== */}
+        <Route path="/kiosk" element={<ChargerMain />} />
 
-        {/* 관리자 로그인 */}
-        {/* <Route path="/admin/login" element={<AdminLoginPage />} /> */}
-
-        {/* 관리자 페이지들 (팀장님 기존 코드 유지) */}
+        {/* ==========================================
+            3. 관리자 영역 (ProtectedRoute)
+           ========================================== */}
         <Route element={<ProtectedRoute />}>
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/admin/member" element={<AdminMemberPage />} />
@@ -61,10 +54,7 @@ export const AppRouter = () => {
           <Route path="/admin/penalty" element={<AdminPenaltyPage />} />
           <Route path="/admin/inquiry" element={<AdminInquiryPage />} />
         </Route>
-
-        <Route path="/stations" element={<Stations />} />
       </Routes>
-        
     </BrowserRouter>
   );
 };

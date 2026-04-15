@@ -72,4 +72,4 @@ const MainLayout = () => {
     );
 };
 
-export default BasicLayout;
+export default MainLayout;

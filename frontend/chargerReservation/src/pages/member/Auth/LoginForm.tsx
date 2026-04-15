@@ -27,17 +27,16 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         loginId: data.loginId,
         loginPw: data.loginPw,
       });
-
-      const response = await AuthService.login(loginRequest);
       const { accessToken, memberGrade, adminId, adminRole, adminPart } = response.data as IToken;
 
-      // 토큰 저장
-      localStorage.setItem("accessToken", accessToken);
+      // AT는 메모리(Zustand)에만 저장 — localStorage 금지
+      login(memberGrade, accessToken);
+
+      // 어드민 파트 정보는 localStorage 저장 (파트 관리용)
       localStorage.setItem("adminId",   String(adminId ?? ""));
       localStorage.setItem("adminRole", adminRole ?? "");
       localStorage.setItem("adminPart", adminPart ?? "");
 
-      login(memberGrade);
       closeModal();
 
       if (memberGrade === "Y") {
