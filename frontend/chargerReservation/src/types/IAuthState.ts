@@ -4,8 +4,11 @@ export interface IAuthState {
     loggedIn: boolean|null;
     memberGrade: string | null;
     activeModal: string;
-    login: (grade: string)=> void;
+    // AT는 메모리에만 저장 (XSS 방지 — localStorage 사용 금지)
+    accessToken: string | null;
+    login: (grade: string, token: string) => void;
     logout: ()=> void;
+    setAccessToken: (token: string | null) => void;
     setActiveModal: (state: any) => void;
     closeModal: () => void;
 }

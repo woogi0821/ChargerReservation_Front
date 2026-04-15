@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useChargerSearch } from '../../hook/useChargerSearch';
 
 interface StationSidebarProps {

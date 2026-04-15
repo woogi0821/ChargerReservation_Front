@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { stationService } from '../../services/stationService';
 import StationSidebar from '../../components/station/StationSidebar';
 import StationDetail from '../../components/station/StationDetail';

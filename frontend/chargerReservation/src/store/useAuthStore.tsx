@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware"; // 1. persist 임포트
+import { persist } from "zustand/middleware";
 import type { IAuthState } from "../types/IAuthState";
 
 export const useAuthStore = create<IAuthState>()(
@@ -8,14 +8,20 @@ export const useAuthStore = create<IAuthState>()(
       loggedIn: false,
       memberGrade: null,
       activeModal: "NONE",
+      // AT는 메모리에만 — persist에서 제외됨 (partialize 참고)
+      accessToken: null,
 
-      login: (grade: string) => {
-        set({ loggedIn: true, memberGrade: grade });
+      // grade + token 함께 저장
+      login: (grade: string, token: string) => {
+        set({ loggedIn: true, memberGrade: grade, accessToken: token });
       },
 
       logout: () => {
-        localStorage.removeItem("accessToken");
-        set({ loggedIn: false, memberGrade: null, activeModal: "NONE" });
+        set({ loggedIn: false, memberGrade: null, activeModal: "NONE", accessToken: null });
+      },
+
+      setAccessToken: (token: string | null) => {
+        set({ accessToken: token });
       },
 
       setActiveModal: (state: string) => {
@@ -28,6 +34,7 @@ export const useAuthStore = create<IAuthState>()(
     }),
     {
       name: "auth-storage",
+      // loggedIn, memberGrade만 localStorage에 저장 — accessToken은 절대 저장 안 함
       partialize: (state) => ({
         loggedIn: state.loggedIn,
         memberGrade: state.memberGrade,

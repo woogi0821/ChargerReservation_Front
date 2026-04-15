@@ -26,8 +26,8 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       const response = await AuthService.login(loginRequest);
       const { accessToken, memberGrade } = response.data;
 
-      localStorage.setItem("accessToken", accessToken);
-      login(memberGrade);
+      // AT는 메모리(Zustand)에만 저장 — localStorage 금지
+      login(memberGrade, accessToken);
 
       closeModal();
 

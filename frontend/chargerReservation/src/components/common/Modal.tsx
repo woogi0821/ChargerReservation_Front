@@ -8,7 +8,7 @@ export interface IModalProps {
   variant?: "primary" | "danger";
 }
 
-function Modal({ isOpen, onClose, title, children, variant = "primary" }: IModalProps) {
+function Modal({ isOpen, onClose, title, children, variant: _variant = "primary" }: IModalProps) {
   if (!isOpen) return null;
 
   return (
