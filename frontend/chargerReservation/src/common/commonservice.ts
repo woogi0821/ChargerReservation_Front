@@ -39,8 +39,9 @@ common.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
 
         if (!refreshToken) {
-          localStorage.clear();
-          window.location.href = '/login';
+          if (window.location.pathname !== '/register') { // 회원가입 중이 아닐 때만 이동
+              localStorage.clear();
+          }
           return Promise.reject(error);
         }
 

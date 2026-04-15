@@ -5,6 +5,7 @@ import authValidation from "../../../validation/authValidation";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import common from "../../../common/commonservice";
+import React from "react";
 
 interface SignupFormProps {
   onLoginClick: () => void;
@@ -15,11 +16,32 @@ interface SignupFormProps {
 function Register({ onLoginClick, onSignupSubmit }: SignupFormProps) {
   const nav = useNavigate();
 
+  // 아이디 중복 확인 관련 상태
+  const [isIdChecked, setIsIdChecked] = useState<boolean>(false);
+  const [isIdAvailable, setIsIdAvailable] = useState<boolean>(false);
+
   // 이메일 인증 관련 상태
   const [isSent, setIsSent] = useState<boolean>(false);
   const [isVerified, setIsVerified] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const timerRef = useRef<number | null>(null);
+
+  // Formik 설정
+  const formik = useFormik({
+    initialValues: {
+      loginId: "",
+      loginPw: "",
+      confirmPw: "",
+      name: "",
+      phone: "",
+      email: "",
+      authCode: "",
+    },
+    validationSchema: authValidation,
+    onSubmit: (data) => {
+      save(data);
+    },
+  });
 
   // 타이머 로직
   const formatTime = (seconds: number) => {
@@ -47,6 +69,37 @@ function Register({ onLoginClick, onSignupSubmit }: SignupFormProps) {
       if (timerRef.current) window.clearInterval(timerRef.current);
     };
   }, []);
+
+  // 아이디 중복 확인 로직
+  const handleCheckId = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+
+    const loginId = formik.values.loginId;
+    if (!loginId || formik.errors.loginId) {
+      alert("올바른 아이디 형식을 입력해주세요.");
+      return;
+    }
+
+    try {
+      const response = await common.get(`/member/check-id?loginId=${loginId}`);
+      if (response.data === true) {
+        setIsIdAvailable(true);
+        setIsIdChecked(true);
+      } else {
+        alert("이미 사용 중인 아이디입니다.");
+        setIsIdAvailable(false);
+        setIsIdChecked(false);
+      }
+    } catch (error: any) {
+      alert(error.response?.data || "중복 확인 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 아이디 입력값이 바뀌면 중복확인 상태 초기화
+  useEffect(() => {
+    setIsIdChecked(false);
+    setIsIdAvailable(false);
+  }, [formik.values.loginId]);
 
   // 이메일 인증번호 발송
   const handleSendCode = async () => {
@@ -82,6 +135,10 @@ function Register({ onLoginClick, onSignupSubmit }: SignupFormProps) {
 
   // 회원 저장
   const save = async (data: any) => {
+    if (!isIdChecked || !isIdAvailable) {
+      alert("아이디 중복 확인을 완료해주세요.");
+      return;
+    }
     if (!isVerified) {
       alert("이메일 인증을 완료해주세요.");
       return;
@@ -89,30 +146,12 @@ function Register({ onLoginClick, onSignupSubmit }: SignupFormProps) {
     try {
       await common.post("/member/join", data);
       alert("회원가입이 완료되었습니다.");
-
       onSignupSubmit(data);
       nav("/", { replace: true }); // 로그인 페이지로 이동
     } catch (error: any) {
       alert(error.response?.data || "회원가입 실패");
     }
   };
-
-  // Formik 설정
-  const formik = useFormik({
-    initialValues: {
-      loginId: "",
-      loginPw: "",
-      confirmPw: "",
-      name: "",
-      phone: "",
-      email: "",
-      authCode: "",
-    },
-    validationSchema: authValidation,
-    onSubmit: (data) => {
-      save(data);
-    },
-  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -142,12 +181,18 @@ function Register({ onLoginClick, onSignupSubmit }: SignupFormProps) {
                     : ""
                 }
               />
+              {/* ✅ 아이디 확인 결과 메시지 */}
+              {isIdChecked && isIdAvailable && (
+                <p className="text-green-600 text-xs mt-1 ml-1 font-bold">
+                  사용 가능한 아이디입니다.
+                </p>
+              )}
             </div>
             <Button
               type="button"
               variant="outline"
               className="h-[52px] w-24 shrink-0 mt-[28px]"
-              onClick={() => console.log("중복 확인:", formik.values.loginId)}
+              onClick={(e) => handleCheckId(e)}
             >
               중복확인
             </Button>
@@ -288,7 +333,8 @@ function Register({ onLoginClick, onSignupSubmit }: SignupFormProps) {
         <Button
           type="submit" // formik.handleSubmit을 실행시킴
           variant="primary"
-          className="w-full py-4 mt-2"
+          className={`w-full py-4 mt-2 ${!isIdChecked || !isVerified ? "opacity-50 cursor-not-allowed" : ""}`}
+          disabled={!isIdChecked || !isIdAvailable || !isVerified}
         >
           가입하기
         </Button>

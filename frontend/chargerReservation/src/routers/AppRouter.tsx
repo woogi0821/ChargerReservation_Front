@@ -13,6 +13,7 @@ import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
 import AdminLoginPage from "../pages/admin/AdminLoginPage";
 import OAuth2RedirectHandler from "../pages/member/Auth/OAuth2RedirectHandler";
 import MainLayout from "../layout/basic/basicLayout";
+import Stations from "../pages/station/Stations";
 
 export const AppRouter = () => {
   return (
