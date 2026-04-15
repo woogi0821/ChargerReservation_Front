@@ -10,6 +10,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export default function Button({ 
   variant = "primary", 
   size = "md", 
+  type = "button",
   children, 
   className, 
   ...props 
@@ -32,6 +33,7 @@ export default function Button({
 
   return (
     <button 
+      type={type}
       className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
       {...props} // onClick, disabled 등을 자동으로 전달
     >

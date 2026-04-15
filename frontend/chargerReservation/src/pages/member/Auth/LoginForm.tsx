@@ -7,6 +7,7 @@ import type { IMember } from "../../../types/IMember";
 import type { IToken } from "../../../services/AuthService"; 
 import AuthService from "../../../services/AuthService";
 import { loginValidation } from "../../../validation/authValidation";
+import { useState } from "react";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -15,17 +16,22 @@ interface LoginFormProps {
 function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const { login, closeModal } = useAuthStore();
   const nav = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (data: IMember) => {
+    if (isLoading) return;
+    setIsLoading(true);
+
     try {
-      const loginRequest = {
+      const response = await AuthService.login({
         loginId: data.loginId,
         loginPw: data.loginPw,
-      };
+      });
 
       const response = await AuthService.login(loginRequest);
       const { accessToken, memberGrade, adminId, adminRole, adminPart } = response.data as IToken;
 
+      // 토큰 저장
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("adminId",   String(adminId ?? ""));
       localStorage.setItem("adminRole", adminRole ?? "");
@@ -41,6 +47,8 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       }
     } catch (error: any) {
       console.error("로그인 시도 중 오류 발생:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
