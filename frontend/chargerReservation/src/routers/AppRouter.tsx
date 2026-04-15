@@ -15,6 +15,7 @@ import OAuth2RedirectHandler from "../pages/member/Auth/OAuth2RedirectHandler";
 import MainLayout from "../layout/basic/basicLayout";
 import Stations from "../pages/station/Stations";
 import ProtectedRoute from "../common/ProtectedRoute";
+import MyPage from "../pages/member/MyPage";
 
 export const AppRouter = () => {
   return (
@@ -27,6 +28,7 @@ export const AppRouter = () => {
         {/* 메인 홈 — ChargeNow 디자인 시안 기반 */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/mypage" element={<MyPage />} />
 
           {/* 헤더가 필요한 페이지 여기에 넣으세요 */}
         </Route>
