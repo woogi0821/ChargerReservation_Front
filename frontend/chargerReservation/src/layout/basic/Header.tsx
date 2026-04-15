@@ -1,10 +1,16 @@
 import { useAuthStore } from '../../store/useAuthStore';
 import Button from '../../components/common/Button';
+import { useLogout } from '../../hook/useLogout';
 import { useNavigate } from 'react-router-dom';
 import AuthService from '../../services/AuthService';
 import { useEffect, useState } from 'react';
 import type { NotificationResponseDto } from '../../services/notificationService';
 import notificationService from '../../services/notificationService';
+  
+  
+  const Header = () => {
+  const { loggedIn, setActiveModal } = useAuthStore();
+  const { handleLogout } = useLogout();
 
 const Header = () => {
   const { loggedIn, logout, setActiveModal } = useAuthStore();

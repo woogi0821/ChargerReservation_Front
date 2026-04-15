@@ -6,6 +6,7 @@ import { useAuthStore } from "../../../store/useAuthStore";
 import type { IMember } from "../../../types/IMember";
 import AuthService from "../../../services/AuthService";
 import { loginValidation } from "../../../validation/authValidation";
+import { useState } from "react";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -14,31 +15,33 @@ interface LoginFormProps {
 function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const { login, closeModal } = useAuthStore();
   const nav = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
   // 로그인 처리 로직 통합
   const handleLogin = async (data: IMember) => {
+    if (isLoading) return;
+    setIsLoading(true);
+
     try {
-      const loginRequest = {
+      const response = await AuthService.login({
         loginId: data.loginId,
         loginPw: data.loginPw,
-      };
+      });
 
-      const response = await AuthService.login(loginRequest);
       const { accessToken, memberGrade } = response.data;
 
+      // 토큰 저장
       localStorage.setItem("accessToken", accessToken);
       login(memberGrade);
-
       closeModal();
 
       // 로그인 성공 시 이동 로직
-      if (memberGrade === "Y") {
-        nav("/admin");
-      } else {
-        nav("/");
-      }
+      nav(memberGrade === "Y" ? "/admin" : "/", { replace: true });
+
     } catch (error: any) {
       console.error("로그인 시도 중 오류 발생:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -66,11 +69,6 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
           />
-          {/* {formik.touched.loginId && formik.errors.loginId && (
-            <div className="text-red-500 text-xs mt-1">
-              {formik.errors.loginId as string}
-            </div>
-          )} */}
         </div>
         <div>
           <Input
@@ -83,15 +81,15 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
           />
-          {/* {formik.touched.loginId && formik.errors.loginPw && (
-            <div className="text-red-500 text-xs mt-1">
-              {formik.errors.loginPw as string}
-            </div>
-          )} */}
         </div>
 
-        <Button type="submit" variant="primary" className="w-full py-4 mt-2">
-          로그인
+        <Button 
+          type="submit" 
+          variant="primary" 
+          className="w-full py-4 mt-2"
+          disabled={isLoading}
+          >
+          {isLoading ? "로그인 중..." : "로그인"}
         </Button>
       </form>
 
