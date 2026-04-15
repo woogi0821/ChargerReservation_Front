@@ -4,6 +4,7 @@ import Button from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
 import { useAuthStore } from "../../../store/useAuthStore";
 import type { IMember } from "../../../types/IMember";
+import type { IToken } from "../../../services/AuthService"; 
 import AuthService from "../../../services/AuthService";
 import { loginValidation } from "../../../validation/authValidation";
 
@@ -15,7 +16,6 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const { login, closeModal } = useAuthStore();
   const nav = useNavigate();
 
-  // 로그인 처리 로직 통합
   const handleLogin = async (data: IMember) => {
     try {
       const loginRequest = {
@@ -24,14 +24,16 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       };
 
       const response = await AuthService.login(loginRequest);
-      const { accessToken, memberGrade } = response.data;
+      const { accessToken, memberGrade, adminId, adminRole, adminPart } = response.data as IToken;
 
       localStorage.setItem("accessToken", accessToken);
-      login(memberGrade);
+      localStorage.setItem("adminId",   String(adminId ?? ""));
+      localStorage.setItem("adminRole", adminRole ?? "");
+      localStorage.setItem("adminPart", adminPart ?? "");
 
+      login(memberGrade);
       closeModal();
 
-      // 로그인 성공 시 이동 로직
       if (memberGrade === "Y") {
         nav("/admin");
       } else {
@@ -42,7 +44,6 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     }
   };
 
-  // Formik 설정 통합
   const formik = useFormik({
     initialValues: { loginId: "", loginPw: "" },
     validationSchema: loginValidation,
@@ -53,7 +54,6 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 폼 영역: onSubmit 연결 */}
       <form onSubmit={formik.handleSubmit} className="flex flex-col gap-4 mt-3">
         <div>
           <Input
@@ -66,11 +66,6 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
           />
-          {/* {formik.touched.loginId && formik.errors.loginId && (
-            <div className="text-red-500 text-xs mt-1">
-              {formik.errors.loginId as string}
-            </div>
-          )} */}
         </div>
         <div>
           <Input
@@ -83,13 +78,7 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
           />
-          {/* {formik.touched.loginId && formik.errors.loginPw && (
-            <div className="text-red-500 text-xs mt-1">
-              {formik.errors.loginPw as string}
-            </div>
-          )} */}
         </div>
-
         <Button type="submit" variant="primary" className="w-full py-4 mt-2">
           로그인
         </Button>
@@ -102,7 +91,6 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         </span>
       </div>
 
-      {/* 소셜 로그인 로직 연동 */}
       <div className="flex flex-col gap-3">
         <Button
           type="button"
