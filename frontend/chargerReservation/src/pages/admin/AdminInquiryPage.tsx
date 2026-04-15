@@ -56,7 +56,7 @@ const AdminInquiryPage = () => {
 
   const fetchInquiries = async () => {
     try {
-      const token = localStorage.getItem("adminToken");
+      const token = localStorage.getItem("accessToken");
       const response = await fetch("http://localhost:8080/api/admin/inquiries", {
         method: "GET",
         headers: {
@@ -91,7 +91,7 @@ const AdminInquiryPage = () => {
   const onSubmitAnswer = async () => {
     if (!selectedInquiry || !answerContent.trim()) return;
     try {
-      const token = localStorage.getItem("adminToken");
+      const token = localStorage.getItem("accessToken");
       const response = await fetch(
         `http://localhost:8080/api/admin/inquiries/${selectedInquiry.inquiryId}/answer`,
         {

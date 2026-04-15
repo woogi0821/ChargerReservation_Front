@@ -4,17 +4,13 @@ import type { ReservationRequest, ReservationResponse, Charger } from "../types/
 const reservationService = {
     // 예약 생성
     createReservation : async (data: ReservationRequest) : Promise<ReservationResponse> => {
-        const response = await common.post<ReservationResponse>("/reservation", data, {
-            headers : {
-                "X-Member-Id" : 1
-            }
-        });
+        const response = await common.post<ReservationResponse>("/reservations", data);
         return response.data;
     },
 
-    // 내 예약 목록 조회
-    getMyReservation : async (memberId : number) => {
-        const response = await common.get(`/reservations/member/${memberId}`);
+    // 내 예약 목록 조회 (JWT 토큰 기반 — /me)
+    getMyReservation : async () => {
+        const response = await common.get("/reservations/me");
         return response.data;
     },
 
@@ -27,11 +23,7 @@ const reservationService = {
 
     // 예약 취소
     cancelReservation : async (reservationId: string) : Promise<void> => {
-        await common.patch(`/reservation/${reservationId}/cancel`, {}, {
-            headers : {
-                "X-Member-Id" : 1
-            }
-        });
+        await common.patch(`/reservations/${reservationId}/cancel`);
     }
 };
 export default reservationService;

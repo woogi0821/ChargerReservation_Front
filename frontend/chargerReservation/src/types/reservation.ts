@@ -1,9 +1,13 @@
 export interface Charger {
-    chargerId : string;
+    chgerId : string;       // 충전기 ID (API: chgerId)
+    statId : string;        // 충전소 ID (API: statId)
     chargerName : string;
     address : string;
-    chargerType : 'RAPID' | 'SLOW';
-    status : 'AVAILABLE' | 'CHARGING' | 'RESERVED' | 'BROKEN' ;
+    fast : boolean;         // 급속 여부 (API: fast)
+    chargerTypeNm : string; // 충전 방식 한글 (API: chargerTypeNm) — "급속" | "완속"
+    chgerType : string;     // 충전 타입 코드 (API: chgerType) — "RAPID" | "SLOW"
+    stat : string;          // 상태 코드 (API: stat) — "2":예약가능 "3":충전중 "9":점검중
+    status : string;        // 상태 영문 (API: status) — "AVAILABLE" | "CHARGING"
 }
 
 export interface ReservationRequest {
