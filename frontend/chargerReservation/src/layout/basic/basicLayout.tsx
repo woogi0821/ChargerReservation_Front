@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 /**
  * 🏗️ 웹사이트 전체 페이지의 공통 뼈대 (헤더 + 컨텐츠 + 푸터)
  */
-const MainLayout = () => {
+const BasicLayout = () => {
     
     const { loggedIn, login, logout, activeModal, setActiveModal, closeModal } = useAuthStore();
     const location = useLocation();
@@ -86,4 +86,4 @@ const MainLayout = () => {
     );
 };
 
-export default MainLayout;
+export default BasicLayout;
