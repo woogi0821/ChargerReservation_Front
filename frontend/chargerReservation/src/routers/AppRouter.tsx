@@ -14,6 +14,7 @@ import AdminLoginPage from "../pages/admin/AdminLoginPage";
 import OAuth2RedirectHandler from "../pages/member/Auth/OAuth2RedirectHandler";
 import MainLayout from "../layout/basic/basicLayout";
 import Stations from "../pages/station/Stations";
+import ProtectedRoute from "../common/ProtectedRoute";
 
 export const AppRouter = () => {
   return (
@@ -48,13 +49,15 @@ export const AppRouter = () => {
         <Route path="/admin/login" element={<AdminLoginPage />} />
 
         {/* 관리자 페이지들 (팀장님 기존 코드 유지) */}
-        <Route path="/admin" element={<AdminDashboardPage />} />
-        <Route path="/admin/member" element={<AdminMemberPage />} />
-        <Route path="/admin/charger" element={<AdminChargerPage />} />
-        <Route path="/admin/reservation" element={<AdminReservationPage />} />
-        <Route path="/admin/notice" element={<AdminNoticePage />} />
-        <Route path="/admin/penalty" element={<AdminPenaltyPage />} />
-        <Route path="/admin/inquiry" element={<AdminInquiryPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route path="/admin/member" element={<AdminMemberPage />} />
+          <Route path="/admin/charger" element={<AdminChargerPage />} />
+          <Route path="/admin/reservation" element={<AdminReservationPage />} />
+          <Route path="/admin/notice" element={<AdminNoticePage />} />
+          <Route path="/admin/penalty" element={<AdminPenaltyPage />} />
+          <Route path="/admin/inquiry" element={<AdminInquiryPage />} />
+        </Route>
 
         <Route path="/stations" element={<Stations />} />
       </Routes>
