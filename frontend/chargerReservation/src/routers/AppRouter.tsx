@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ChargerMain } from "../pages/mock/KioskPage";
-import AdminPage from "../pages/admin/AdminDashboardPage";
 import AdminMemberPage from "../pages/admin/AdminMemberPage";
 import AdminChargerPage from "../pages/admin/AdminChargerPage";
 import AdminReservationPage from "../pages/admin/AdminReservationPage";
