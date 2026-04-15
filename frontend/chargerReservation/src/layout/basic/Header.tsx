@@ -1,24 +1,10 @@
 import { useAuthStore } from '../../store/useAuthStore';
 import Button from '../../components/common/Button';
-import { useNavigate } from 'react-router-dom';
-import AuthService from '../../services/AuthService';
+import { useLogout } from '../../hook/useLogout';
 
 const Header = () => {
-  const { loggedIn, logout, setActiveModal } = useAuthStore();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    if (!window.confirm("로그아웃 하시겠습니까?")) return;
-
-    try {
-      await AuthService.logout();
-    } catch (error) {
-      console.error("Logout API 에러:", error);
-    } finally {
-      logout();
-      navigate("/");
-    }
-  };
+  const { loggedIn, setActiveModal } = useAuthStore();
+  const { handleLogout } = useLogout();
 
   return (
     <header className="fixed top-0 left-0 z-50 w-full h-[88px] bg-gradient-to-b from-[#E0F2FE]/60 via-[#F0F9FF]/80 to-white/95 backdrop-blur-sm border-b border-zinc-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)]">

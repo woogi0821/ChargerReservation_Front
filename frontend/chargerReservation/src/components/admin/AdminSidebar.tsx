@@ -1,5 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import AuthService from "../../services/AuthService";
+import { useLogout } from "../../hook/useLogout";
 
 interface MenuItem {
   label: string;
@@ -37,8 +39,10 @@ export const AdminSidebar = ({
   ...props
 }: AdminSidebarProps) => {
 
+
   const navigate = useNavigate();
   const location = useLocation();
+  const { handleLogout } = useLogout();
 
   // 파트에 따라 메뉴 필터링
   // 회원관리는 SUPER 또는 MEMBER 파트만 표시
@@ -96,7 +100,7 @@ export const AdminSidebar = ({
           {adminName}
         </p>
         <button
-          onClick={onLogout}
+          onClick={handleLogout}
           className="text-xs text-gray-400 hover:text-blue-700 tracking-wide transition-colors"
         >
           로그아웃
