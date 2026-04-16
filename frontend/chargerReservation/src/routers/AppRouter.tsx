@@ -11,11 +11,12 @@ import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminPenaltyPage from "../pages/admin/AdminPenaltyPage";
 import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
 import OAuth2RedirectHandler from "../pages/member/Auth/OAuth2RedirectHandler";
-import Stations from "../pages/station/Stations";
 import MainLayout from "../layout/basic/basicLayout";
 import Stations from "../pages/station/Stations";
 import ProtectedRoute from "../common/ProtectedRoute";
 import MyPage from "../pages/member/MyPage";
+import Stations from "../pages/station/Stations";
+import BasicLayout from "../layout/basic/basicLayout";
 
 export const AppRouter = () => {
   return (
@@ -26,7 +27,7 @@ export const AppRouter = () => {
            ========================================== */}
 
         {/* 메인 홈 — ChargeNow 디자인 시안 기반 */}
-        <Route element={<MainLayout />}>
+        <Route element={<BasicLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/mypage" element={<MyPage />} />
 
