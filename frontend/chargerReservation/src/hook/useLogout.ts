@@ -8,7 +8,7 @@ export const useLogout = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    if (!window.confirm("로그아웃 하시겠습니까?222")) return;
+    if (!window.confirm("로그아웃 하시겠습니까?")) return;
 
     try {
       await AuthService.logout();
