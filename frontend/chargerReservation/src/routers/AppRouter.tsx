@@ -58,8 +58,6 @@ export const AppRouter = () => {
             충전소 찾기
            ========================================== */}
         <Route path="/stations" element={<Stations />} />
-
-
       </Routes>
     </BrowserRouter>
   );
