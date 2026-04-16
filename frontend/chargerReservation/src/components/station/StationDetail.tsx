@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import reservationService from '../../services/reservationService';
 import type { Charger } from '../../types/reservation';
@@ -59,7 +59,7 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
     setReserveStep('loading');
     try {
       const chargers = await reservationService.getChargersByStation(station.statId);
-      const available = chargers.filter(c => c.status === 'AVAILABLE');
+      const available = chargers.filter(c => c.stat === '2');
 
       if (available.length === 0) {
         alert('현재 예약 가능한 충전기가 없습니다.');
@@ -67,8 +67,8 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
         return;
       }
 
-      const rapidList = available.filter(c => c.chargerType === 'RAPID');
-      const slowList  = available.filter(c => c.chargerType === 'SLOW');
+      const rapidList = available.filter(c => c.chargerTypeNm === '급속');
+      const slowList  = available.filter(c => c.chargerTypeNm === '완속');
 
       // 한 타입만 있으면 바로 이동
       if (rapidList.length > 0 && slowList.length === 0) {
@@ -91,18 +91,18 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
 
   // 타입 선택 후 이동
   const handleChargerTypeSelect = (type: 'RAPID' | 'SLOW') => {
-    const selected = availableChargers.find(c => c.chargerType === type);
-    if (selected) {
-      navigate('/reservation', { state: { selectedCharger: selected } });
-    }
+    const selected = availableChargers.find(c =>
+      type === 'RAPID' ? c.chargerTypeNm === '급속' : c.chargerTypeNm === '완속'
+    );
+    navigate('/reservation', { state: { selectedCharger: selected } });
   };
 
   // ── 하단 액션 버튼 렌더링 ────────────────────────────────────────────────
   const renderBottomAction = () => {
     // [선택 단계] 급속 / 완속 선택 버튼
     if (reserveStep === 'selecting') {
-      const rapidChargers = availableChargers.filter(c => c.chargerType === 'RAPID');
-      const slowChargers  = availableChargers.filter(c => c.chargerType === 'SLOW');
+      const rapidChargers = availableChargers.filter(c => c.chargerTypeNm === '급속');
+      const slowChargers  = availableChargers.filter(c => c.chargerTypeNm === '완속');
       return (
         <div className="p-4 border-t border-gray-100 bg-white space-y-2">
           <p className="text-xs text-gray-500 text-center font-medium mb-1">충전 방식을 선택해주세요</p>

@@ -6,8 +6,6 @@ import Button from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
 import { Badge } from "../../components/common/badge";
 import { Toast } from "../../components/common/Toast";
-import Modal from "../../components/common/Modal";
-import AuthModalContainer from "../member/Auth/AuthModalContainer";
 import { useAuthStore } from "../../store/useAuthStore";
 
 // ─────────────────────────────────────────────
@@ -116,7 +114,6 @@ const FEATURES = [
 
 export const HomePage = () => {
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const { loggedIn, setActiveModal } = useAuthStore();
   const [toastVisible, setToastVisible] = useState(false);
 
@@ -297,7 +294,7 @@ export const HomePage = () => {
                   variant="primary"
                   size="sm"
                   disabled={station.status === "full"}
-                  onClick={() => setIsLoginModalOpen(true)}
+                  onClick={() => setActiveModal("INFO")}
                   className="mt-auto w-full"
                 >
                   {station.status === "full" ? "예약 불가" : "예약하기"}

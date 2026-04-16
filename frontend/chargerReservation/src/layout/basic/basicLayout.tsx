@@ -1,58 +1,44 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import { useAuthStore } from '../../store/useAuthStore';
 import Modal from '../../components/common/Modal';
 import AuthModalContainer from '../../pages/member/Auth/AuthModalContainer';
 import { useEffect } from 'react';
+import axios from 'axios';
 
 /**
  * 🏗️ 웹사이트 전체 페이지의 공통 뼈대 (헤더 + 컨텐츠 + 푸터)
  */
-const BasicLayout = () => {
-    
-    const { loggedIn, login, logout, activeModal, setActiveModal, closeModal } = useAuthStore();
+const MainLayout = () => {
+
+    const { loggedIn, login, logout, accessToken, activeModal, setActiveModal, closeModal } = useAuthStore();
     const location = useLocation();
-    const navigate = useNavigate();
-    
+
+    // 새로고침 시 AT가 메모리에서 사라지므로 RT 쿠키로 무음 갱신
     useEffect(() => {
-        const recoverAuth = async () => {
-            // URL에 토큰 정보가 있는지 먼저 확인 (소셜 로그인용)
-            const params = new URLSearchParams(location.search);
-            const tokenFromUrl = params.get("accessToken");
-            const gradeFromUrl = params.get("memberGrade") || params.get("role") || "N";
+        const restoreToken = async () => {
+            // 이미 AT가 메모리에 있으면 스킵
+            if (accessToken) return;
+            // loggedIn(localStorage)이 true인데 AT가 없으면 → refresh로 복구
+            if (!loggedIn) return;
 
-            // 소셜 로그인 성공시
-            if (tokenFromUrl && !loggedIn) {
-                localStorage.setItem("accessToken", tokenFromUrl);
-                login(gradeFromUrl);
-
-                setTimeout(() => {
-                    navigate("/", { replace: true });
-                }, 10); 
-                return;
-            }
-
-
-            // 기존 세션 복구 로직
-            const hasAccessToken = localStorage.getItem("accessToken"); 
-            if (loggedIn && !hasAccessToken) {
-                try {
-                    // 2. 여기서 Silent Refresh API를 호출합니다.
-                    // const response = await AuthService.refresh(); 
-                    // const { accessToken, memberGrade } = response.data;
-                    
-                    // 3. 성공 시 다시 로그인 처리 (메모리 보충)
-                    // login(memberGrade); 
-                    // localStorage.setItem("accessToken", accessToken);
-                } catch (error) {
-                    console.error("세션 복구 실패:", error);
-                    logout();
-                }
+            try {
+                const res = await axios.post(
+                    "http://localhost:8080/api/member/refresh",
+                    {},
+                    { withCredentials: true }
+                );
+                const { accessToken: newToken, memberGrade } = res.data;
+                login(memberGrade, newToken);
+            } catch {
+                // RT도 만료된 경우 → 로그아웃 처리
+                logout();
             }
         };
 
-        recoverAuth();
-    }, [location.search, loggedIn, login, navigate]);
+        restoreToken();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
 
     return (
@@ -86,4 +72,4 @@ const BasicLayout = () => {
     );
 };
 
-export default BasicLayout;
+export default MainLayout;

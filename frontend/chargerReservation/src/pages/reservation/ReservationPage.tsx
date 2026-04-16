@@ -10,13 +10,18 @@ import reservationService from "../../services/reservationService";
 import type { ReservationRequest, ReservationResponse, Charger } from "../../types/reservation";
 
 // ── 유틸 ─────────────────────────────────────────────────────────────────────
-/** 현재 시각 + offsetMinutes 분 후의 ISO 8601 문자열 반환 */
+/** 현재 시각 + offsetMinutes 분 후를 로컬 시간 기준 ISO 문자열로 반환
+ *  ⚠️ toISOString()은 UTC를 반환하므로 사용 금지
+ *  백엔드 @Future 어노테이션은 서버 로컬(KST) 기준으로 검증함 */
 const getFutureTime = (offsetMinutes: number): string => {
     const d = new Date();
     d.setMinutes(d.getMinutes() + offsetMinutes);
-    // 초·밀리초 제거 후 'Z' 대신 로컬 오프셋으로 포맷
     d.setSeconds(0, 0);
-    return d.toISOString().slice(0, 19); // e.g. "2026-04-14T15:30:00"
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return (
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+        `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    );
 };
 
 const CHARGER_TYPE_LABEL: Record<string, string> = {
@@ -24,11 +29,11 @@ const CHARGER_TYPE_LABEL: Record<string, string> = {
     SLOW:  "🔌 완속 충전",
 };
 
+// stat 코드(공공API) → 표시 정보 매핑
 const STATUS_LABEL: Record<string, { text: string; color: string }> = {
-    AVAILABLE: { text: "예약 가능",  color: "text-green-600 bg-green-50" },
-    RESERVED:  { text: "예약 중",    color: "text-yellow-600 bg-yellow-50" },
-    CHARGING:  { text: "충전 중",    color: "text-blue-600 bg-blue-50" },
-    BROKEN:    { text: "점검 중",    color: "text-red-600 bg-red-50" },
+    "2": { text: "예약 가능",  color: "text-green-600 bg-green-50" },
+    "3": { text: "충전 중",    color: "text-blue-600 bg-blue-50" },
+    "9": { text: "점검 중",    color: "text-red-600 bg-red-50" },
 };
 
 // ── 컴포넌트 ──────────────────────────────────────────────────────────────────
@@ -78,10 +83,10 @@ export const ReservationPage = () => {
             const startTime = getFutureTime(15);
 
             const requestData: ReservationRequest = {
-                chargerId:   selectedCharger.chargerId,
+                chargerId:   selectedCharger.chgerId,
                 carNumber:   carNumber.replace(/\s/g, ""),
                 startTime,
-                chargerType: selectedCharger.chargerType,
+                chargerType: selectedCharger.chgerType,
             };
 
             const result = await reservationService.createReservation(requestData);
@@ -107,7 +112,7 @@ export const ReservationPage = () => {
         );
     }
 
-    const statusInfo = STATUS_LABEL[selectedCharger.status] ?? { text: selectedCharger.status, color: "text-zinc-600 bg-zinc-100" };
+    const statusInfo = STATUS_LABEL[selectedCharger.stat] ?? { text: selectedCharger.stat, color: "text-zinc-600 bg-zinc-100" };
 
     return (
         <>
@@ -124,7 +129,7 @@ export const ReservationPage = () => {
                 <div className="bg-[#F5F8FF] border border-[#DBEAFE] rounded-xl p-5 mb-8 space-y-2">
                     <div className="flex items-center justify-between">
                         <span className="text-sm font-bold text-[#3B82F6]">
-                            {CHARGER_TYPE_LABEL[selectedCharger.chargerType] ?? selectedCharger.chargerType}
+                            {CHARGER_TYPE_LABEL[selectedCharger.chgerType] ?? selectedCharger.chgerType}
                         </span>
                         <span className={`text-xs font-bold px-2 py-1 rounded-full ${statusInfo.color}`}>
                             {statusInfo.text}
@@ -133,7 +138,7 @@ export const ReservationPage = () => {
                     <p className="text-base font-black text-[#0F172A]">{selectedCharger.chargerName}</p>
                     <p className="text-xs text-zinc-400">{selectedCharger.address}</p>
                     <p className="text-[10px] text-zinc-400 pt-1 border-t border-[#DBEAFE]">
-                        ID: {selectedCharger.chargerId}
+                        ID: {selectedCharger.chgerId}
                     </p>
                 </div>
 
