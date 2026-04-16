@@ -1,91 +1,81 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "../../components/common/Button";
-
-// 1. 필요한 아이콘 SVG (Heroicons 스타일)
-const Icons = {
-  User: () => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.5}
-      stroke="currentColor"
-      className="w-5 h-5"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-      />
-    </svg>
-  ),
-  Mail: () => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.5}
-      stroke="currentColor"
-      className="w-5 h-5"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-      />
-    </svg>
-  ),
-  Lock: () => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.5}
-      stroke="currentColor"
-      className="w-5 h-5"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
-      />
-    </svg>
-  ),
-  Phone: () => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.5}
-      stroke="currentColor"
-      className="w-5 h-5"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"
-      />
-    </svg>
-  ),
-};
+import { Input } from "../../components/common/Input";
+import type { IMember } from "../../types/IMember";
+import common from "../../common/commonservice";
+import { useFormik } from "formik";
+import { updateValidation } from "../../validation/memberValidation";
 
 const MyPage = () => {
   const [isEditing, setIsEditing] = useState(false);
+  const [userInfo, setUserInfo] = useState<IMember | null>(null);
 
-  // 회원가입 폼 기준 초기 데이터
-  const [userInfo, setUserInfo] = useState({
-    userId: "charge_now_user", // 아이디
-    email: "hong@kakao.com", // 이메일
-    name: "홍길동", // 이름
-    phone: "010-1234-5678", // 전화번호
-    password: "", // 비밀번호 변경용
-    confirmPassword: "",
+  useEffect(() => {
+    const fetchMemberInfo = async () => {
+      try {
+        const response = await common.get<IMember>("/member/me", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        });
+        setUserInfo(response.data);
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    };
+    fetchMemberInfo();
+  }, []);
+
+  const formik = useFormik({
+    initialValues: {
+      loginId: userInfo?.loginId || "",
+      email: userInfo?.email || "",
+      name: userInfo?.name || "",
+      phone: userInfo?.phone || "",
+      loginPw: "",
+      confirmPw: "",
+    },
+    validationSchema: updateValidation,
+    validateOnBlur: true,
+    validateOnChange: true,
+    enableReinitialize: true,
+    onSubmit: async (values) => {
+      try {
+        const response = await common.put("/member/me", values, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        });
+        if (response.status === 200) {
+          alert("회원 정보가 성공적으로 수정되었습니다.");
+          setIsEditing(false);
+          setUserInfo((prev) => (prev ? { ...prev, ...values } : null));
+        }
+      } catch (error) {
+        alert("수정 실패. 다시 시도 하세요.");
+      }
+    },
   });
+
+  if (!userInfo) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        로딩 중...
+      </div>
+    );
+  }
+
+  const formatPhoneNumber = (phoneNumber: string | undefined) => {
+    if (!phoneNumber) return "";
+    const cleaned = phoneNumber.replace(/\D/g, "");
+    const match = cleaned.match(/^(\d{3})(\d{3,4})(\d{4})$/);
+    return match ? `${match[1]}-${match[2]}-${match[3]}` : phoneNumber;
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-900">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* 1. 상단 프로필 요약 카드 */}
+        {/* 상단 프로필 */}
         <div className="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-6 text-center md:text-left flex-col md:flex-row">
             <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-4xl shadow-inner border-4 border-white">
@@ -94,159 +84,168 @@ const MyPage = () => {
             <div>
               <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
                 <h2 className="text-2xl font-extrabold text-slate-800">
-                  {userInfo.name}
+                  {userInfo?.name}
                 </h2>
-                <span className="px-2 py-1 bg-blue-50 text-blue-500 text-[10px] rounded font-bold uppercase tracking-tighter">
-                  Verified
+                <span
+                  className={`px-2 py-1 text-[10px] rounded font-bold uppercase tracking-tighter ${
+                    userInfo?.memberGrade === "Y"
+                      ? "bg-rose-50 text-rose-500"
+                      : "bg-blue-50 text-blue-500"
+                  }`}
+                >
+                  {userInfo?.memberGrade === "Y" ? "Admin" : "User"}
                 </span>
               </div>
+              <p className="text-slate-400 text-sm">{userInfo?.email}</p>
               <p className="text-slate-400 text-sm">
-                {userInfo.userId} · {userInfo.email}
+                {formatPhoneNumber(userInfo?.phone)}
               </p>
-              <p className="text-slate-400 text-sm">{userInfo.phone}</p>
             </div>
           </div>
-          <Button onClick={() => setIsEditing(!isEditing)}>
+          <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
             {isEditing ? "수정 취소" : "프로필 수정"}
           </Button>
         </div>
 
-        {/* 2. 계정 정보 설정 창 (회원가입 항목 기반) */}
+        {/* 계정 정보 설정 폼 */}
         <div
           className={`transition-all duration-500 ease-in-out overflow-hidden ${
-            isEditing ? "max-h-[1000px] opacity-100 mb-6" : "max-h-0 opacity-0"
+            isEditing ? "opacity-100 mb-6" : "max-h-0 opacity-0"
           }`}
         >
           <div className="bg-white rounded-3xl p-6 md:p-10 shadow-xl border border-blue-50">
             <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
               <span className="w-2 h-6 bg-blue-500 rounded-full"></span>
-              계정 정보 설정
+              계정 정보
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-500 ml-1">
-                  아이디
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">
-                    <Icons.User />
-                  </span>
-                  <input
-                    type="text"
-                    value={userInfo.userId}
-                    disabled
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 text-slate-400 border border-slate-100 rounded-2xl cursor-not-allowed"
-                  />
-                </div>
-              </div>
+            {/* 브라우저 자동완성용 숨김 필드 */}
+            <input
+              type="text"
+              name="username"
+              value={formik.values.loginId}
+              readOnly
+              autoComplete="username"
+              style={{ display: "none" }}
+            />
+            <input
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              style={{ display: "none" }}
+            />
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-500 ml-1">
-                  이메일
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">
-                    <Icons.Mail />
-                  </span>
-                  <input
-                    type="text"
-                    value={userInfo.email}
-                    disabled
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 text-slate-400 border border-slate-100 rounded-2xl cursor-not-allowed"
-                  />
-                </div>
-              </div>
+            <form id="profileForm" onSubmit={formik.handleSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <Input
+                  label="아이디"
+                  id="loginId"
+                  name="loginId"
+                  value={formik.values.loginId}
+                  readOnly
+                  autoComplete="username"
+                />
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 ml-1">
-                  이름
-                </label>
-                <div className="relative group">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500">
-                    <Icons.User />
-                  </span>
-                  <input
-                    type="text"
-                    value={userInfo.name}
-                    onChange={(e) =>
-                      setUserInfo({ ...userInfo, name: e.target.value })
-                    }
-                    className="w-full pl-12 pr-4 py-4 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 rounded-2xl outline-none transition-all font-medium"
-                  />
-                </div>
-              </div>
+                <Input
+                  label="이메일"
+                  id="email"
+                  name="email"
+                  value={formik.values.email}
+                  readOnly
+                  autoComplete="email"
+                />
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 ml-1">
-                  전화번호
-                </label>
-                <div className="relative group">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500">
-                    <Icons.Phone />
-                  </span>
-                  <input
-                    type="text"
-                    value={userInfo.phone}
-                    onChange={(e) =>
-                      setUserInfo({ ...userInfo, phone: e.target.value })
-                    }
-                    className="w-full pl-12 pr-4 py-4 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 rounded-2xl outline-none transition-all font-medium"
-                  />
-                </div>
-              </div>
+                <Input
+                  label="이름"
+                  type="text"
+                  id="name"
+                  name="name"
+                  placeholder="이름을 입력하세요"
+                  value={formik.values.name}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  readOnly={!isEditing}
+                  autoComplete="name"
+                  error={formik.touched.name ? formik.errors.name : undefined}
+                />
 
-              <div className="md:col-span-2 border-t border-slate-50 my-2"></div>
+                <Input
+                  label="전화번호"
+                  type="text"
+                  id="phone"
+                  name="phone"
+                  placeholder="01000000000 (- 제외)"
+                  value={formik.values.phone}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  readOnly={!isEditing}
+                  autoComplete="tel"
+                  error={formik.touched.phone ? formik.errors.phone : undefined}
+                />
 
-              {/* 비밀번호 변경 */}
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 ml-1">
-                  새 비밀번호
-                </label>
-                <div className="relative group">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500">
-                    <Icons.Lock />
-                  </span>
-                  <input
-                    type="password"
-                    placeholder="8~15자 (영문, 숫자, 특수문자)"
-                    className="w-full pl-12 pr-4 py-4 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 rounded-2xl outline-none transition-all font-medium"
-                  />
-                </div>
-              </div>
+                <Input
+                  label="새 비밀번호"
+                  type="password"
+                  id="loginPw"
+                  name="loginPw"
+                  placeholder="8~15자 (영문, 숫자, 특수문자)"
+                  value={formik.values.loginPw}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  readOnly={!isEditing}
+                  autoComplete="new-password"
+                  error={
+                    formik.touched.loginPw ? formik.errors.loginPw : undefined
+                  }
+                />
 
-              {/* 비밀번호 확인 */}
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 ml-1">
-                  새 비밀번호 확인
-                </label>
-                <div className="relative group">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500">
-                    <Icons.Lock />
-                  </span>
-                  <input
-                    type="password"
-                    placeholder="비밀번호를 다시 입력하세요"
-                    className="w-full pl-12 pr-4 py-4 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 rounded-2xl outline-none transition-all font-medium"
-                  />
-                </div>
+                <Input
+                  label="새 비밀번호 확인"
+                  type="password"
+                  id="confirmPw"
+                  name="confirmPw"
+                  placeholder="비밀번호를 다시 입력하세요"
+                  value={formik.values.confirmPw}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  readOnly={!isEditing}
+                  autoComplete="new-password"
+                  error={
+                    formik.touched.confirmPw
+                      ? formik.errors.confirmPw
+                      : undefined
+                  }
+                />
               </div>
-            </div>
+            </form>
+
+            <div className="md:col-span-2 border-t border-slate-50 my-2"></div>
 
             <div className="flex flex-col md:flex-row justify-end mt-10 gap-4">
               <Button
+                type="button"
                 variant="danger"
                 className="px-8 py-4 text-rose-500 font-bold hover:bg-rose-50 rounded-2xl transition-all"
+                onClick={() => {
+                  if (window.confirm("정말 탈퇴하시겠습니까?"))
+                    console.log("탈퇴");
+                }}
               >
                 회원 탈퇴
               </Button>
-              <Button className="px-12 py-4 bg-blue-500 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-600 active:scale-95 transition-all">
+
+              <Button
+                type="submit"
+                form="profileForm"
+                className="px-12 py-4 bg-blue-500 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-600 active:scale-95 transition-all"
+              >
                 저장
               </Button>
             </div>
           </div>
         </div>
 
+        {/* 통계 정보 및 즐겨찾기 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             {
@@ -289,10 +288,8 @@ const MyPage = () => {
         </div>
 
         <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
-          {/* 헤더 영역 */}
           <div className="flex justify-between items-center mb-10">
             <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800">
-              {/* 별 아이콘 직접 삽입 */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -307,11 +304,8 @@ const MyPage = () => {
               0개
             </span>
           </div>
-
-          {/* 데이터가 없을 때 표시되는 UI (Empty State) */}
           <div className="flex flex-col items-center justify-center py-12">
             <div className="mb-4">
-              {/* 큰 하트 아이콘 직접 삽입 */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"

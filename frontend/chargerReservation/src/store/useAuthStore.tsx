@@ -8,15 +8,16 @@ export const useAuthStore = create<IAuthState>()(
       loggedIn: false,
       memberGrade: null,
       activeModal: "NONE",
-      // AT는 메모리에만 — persist에서 제외됨 (partialize 참고)
-      accessToken: null,
+      accessToken: localStorage.getItem("accessToken") || null,
 
       // grade + token 함께 저장
       login: (grade: string, token: string) => {
+        localStorage.setItem("accessToken", token);
         set({ loggedIn: true, memberGrade: grade, accessToken: token });
       },
 
       logout: () => {
+        localStorage.removeItem("accessToken");
         set({ loggedIn: false, memberGrade: null, activeModal: "NONE", accessToken: null });
       },
 
