@@ -4,7 +4,7 @@ import Button from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
 import { useAuthStore } from "../../../store/useAuthStore";
 import type { IMember } from "../../../types/IMember";
-import type { IToken } from "../../../services/AuthService"; 
+import type { IToken } from "../../../services/AuthService";
 import AuthService from "../../../services/AuthService";
 import { loginValidation } from "../../../validation/authValidation";
 import { useState } from "react";
@@ -27,13 +27,14 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         loginId: data.loginId,
         loginPw: data.loginPw,
       });
-      const { accessToken, memberGrade, adminId, adminRole, adminPart } = response.data as IToken;
+      const { accessToken, memberGrade, adminId, adminRole, adminPart } =
+        response.data as IToken;
 
       // AT는 메모리(Zustand)에만 저장 — localStorage 금지
       login(memberGrade, accessToken);
 
       // 어드민 파트 정보는 localStorage 저장 (파트 관리용)
-      localStorage.setItem("adminId",   String(adminId ?? ""));
+      localStorage.setItem("adminId", String(adminId ?? ""));
       localStorage.setItem("adminRole", adminRole ?? "");
       localStorage.setItem("adminPart", adminPart ?? "");
       localStorage.setItem("accessToken",  accessToken);
@@ -47,6 +48,15 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       }
     } catch (error: any) {
       console.error("로그인 시도 중 오류 발생:", error);
+
+      if (error.response && error.response.status === 401) {
+        alert("아이디 또는 비밀번호가 일치하지 않습니다.");
+      } else {
+        alert(
+          error.response?.data?.message ||
+            "로그인 중 오류가 발생했습니다. 다시 시도해주세요.",
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +75,7 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       <form onSubmit={formik.handleSubmit} className="flex flex-col gap-4 mt-3">
         <div>
           <Input
-            label="아이디 (이메일)"
+            label="아이디"
             id="loginId"
             name="loginId"
             placeholder="example@email.com"
