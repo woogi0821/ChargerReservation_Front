@@ -1,15 +1,21 @@
-//해당 파일은 철저하게 검색이라는 행위와 결과 데이터만 책임지는 파일입니다.
-//화면에 어떤식으로 보일지는 전혀 신경쓰지않습니다.
 import { useState } from "react";
 import common from "../common/commonservice";
 
-//types 폴더에 정의해둘 충전소 데이터 타입
-//(뼈대만 잡아둔것이고 api데이터가 전부 들어오면 수정)
+// 상세 필드까지 포함하도록 인터페이스 확장 (사이드바 에러 방지)
 interface Charger {
-    chargerId: string;
-    chargerName:string;
-    address:string;
-    status:string;
+    statId: string;
+    statNm: string;
+    addr: string;
+    lat: number;
+    lng: number;
+    fastChargerStatus?: string;
+    slowChargerStatus?: string;
+    currentPrice?: number;
+    slowPrice?: number;
+    limitYn?: string;
+    useTime?: string;
+    distance?: number;
+    [key: string]: any; // 다른 추가 필드 허용
 }
 
 export const useChargerSearch = () => {
@@ -17,24 +23,36 @@ export const useChargerSearch = () => {
     const [results, setResults] = useState<Charger[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
-
-    const executeSearch = async (searchKeyword : string) =>{
-        if(!searchKeyword.trim()){
+    const executeSearch = async (searchKeyword: string, lat: number, lng: number) => {
+        // 키워드가 없으면 결과 초기화
+        if (!searchKeyword.trim()) {
             setResults([]);
             return;
         }
-        setIsLoading(true);
         
-        try{
-            const response = await common.get(`/chargers/search?keyword=${searchKeyword}`);
-            setResults(response.data);
+        setIsLoading(true);
+        try {
+            const response = await common.get(
+                `/stations/search?keyword=${searchKeyword}&lat=${lat}&lng=${lng}`
+            );
+            
+            // ✅ 데이터가 배열인지 확인 후 저장 (백엔드 구조에 따라 response.data.data 일 수 있음)
+            const data = response.data;
+            if (Array.isArray(data)) {
+                setResults(data);
+            } else if (data && Array.isArray(data.data)) {
+                setResults(data.data);
+            } else {
+                setResults([]);
+            }
         } catch(err) {
-            console.error('검색 실패, UI초기화 진행');
+            console.error('검색 실패:', err);
             setResults([]);
         } finally {
             setIsLoading(false);
         }
     };
+
     return {
         keyword,
         setKeyword,

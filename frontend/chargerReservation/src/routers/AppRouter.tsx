@@ -10,8 +10,8 @@ import Home from "../components/common/Home";
 import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminPenaltyPage from "../pages/admin/AdminPenaltyPage";
 import AdminInquiryPage from "../pages/admin/AdminInquiryPage";
-import AdminLoginPage from "../pages/admin/AdminLoginPage";
 import OAuth2RedirectHandler from "../pages/member/Auth/OAuth2RedirectHandler";
+import Stations from "../pages/station/Stations";
 import MainLayout from "../layout/basic/basicLayout";
 import Stations from "../pages/station/Stations";
 import ProtectedRoute from "../common/ProtectedRoute";
@@ -48,7 +48,7 @@ export const AppRouter = () => {
         <Route path="kiosk" element={<ChargerMain />} />
 
         {/* 관리자 로그인 */}
-        <Route path="/admin/login" element={<AdminLoginPage />} />
+        {/* <Route path="/admin/login" element={<AdminLoginPage />} /> */}
 
         {/* 관리자 페이지들 (팀장님 기존 코드 유지) */}
         <Route element={<ProtectedRoute />}>
@@ -63,6 +63,7 @@ export const AppRouter = () => {
 
         <Route path="/stations" element={<Stations />} />
       </Routes>
+        
     </BrowserRouter>
   );
 };

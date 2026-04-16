@@ -1,4 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import reservationService from '../../services/reservationService';
+import type { Charger } from '../../types/reservation';
 
 interface StationDetailProps {
   station: any;
@@ -6,6 +9,12 @@ interface StationDetailProps {
 }
 
 const StationDetail = ({ station, onClose }: StationDetailProps) => {
+  const navigate = useNavigate();
+
+  // 예약 버튼 상태: 'idle' | 'loading' | 'selecting'
+  const [reserveStep, setReserveStep] = useState<'idle' | 'loading' | 'selecting'>('idle');
+  const [availableChargers, setAvailableChargers] = useState<Charger[]>([]);
+
   if (!station) return null;
 
   const formatStatusWithIcon = (status: string, type: '급속' | '완속') => {
@@ -45,6 +54,113 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
   };
   const hasRestriction = checkRestriction();
 
+  // ── 예약하기 클릭 핸들러 ──────────────────────────────────────────────────
+  const handleReservationClick = async () => {
+    setReserveStep('loading');
+    try {
+      const chargers = await reservationService.getChargersByStation(station.statId);
+      const available = chargers.filter(c => c.status === 'AVAILABLE');
+
+      if (available.length === 0) {
+        alert('현재 예약 가능한 충전기가 없습니다.');
+        setReserveStep('idle');
+        return;
+      }
+
+      const rapidList = available.filter(c => c.chargerType === 'RAPID');
+      const slowList  = available.filter(c => c.chargerType === 'SLOW');
+
+      // 한 타입만 있으면 바로 이동
+      if (rapidList.length > 0 && slowList.length === 0) {
+        navigate('/reservation', { state: { selectedCharger: rapidList[0] } });
+        return;
+      }
+      if (slowList.length > 0 && rapidList.length === 0) {
+        navigate('/reservation', { state: { selectedCharger: slowList[0] } });
+        return;
+      }
+
+      // 급속 + 완속 모두 있으면 선택 UI 표시
+      setAvailableChargers(available);
+      setReserveStep('selecting');
+    } catch {
+      alert('충전기 정보를 불러오는데 실패했습니다.\n잠시 후 다시 시도해주세요.');
+      setReserveStep('idle');
+    }
+  };
+
+  // 타입 선택 후 이동
+  const handleChargerTypeSelect = (type: 'RAPID' | 'SLOW') => {
+    const selected = availableChargers.find(c => c.chargerType === type);
+    if (selected) {
+      navigate('/reservation', { state: { selectedCharger: selected } });
+    }
+  };
+
+  // ── 하단 액션 버튼 렌더링 ────────────────────────────────────────────────
+  const renderBottomAction = () => {
+    // [선택 단계] 급속 / 완속 선택 버튼
+    if (reserveStep === 'selecting') {
+      const rapidChargers = availableChargers.filter(c => c.chargerType === 'RAPID');
+      const slowChargers  = availableChargers.filter(c => c.chargerType === 'SLOW');
+      return (
+        <div className="p-4 border-t border-gray-100 bg-white space-y-2">
+          <p className="text-xs text-gray-500 text-center font-medium mb-1">충전 방식을 선택해주세요</p>
+          <div className="grid grid-cols-2 gap-3">
+            {rapidChargers.length > 0 && (
+              <button
+                onClick={() => handleChargerTypeSelect('RAPID')}
+                className="bg-blue-600 text-white py-4 rounded-xl font-black text-base shadow-lg shadow-blue-200 active:scale-95 transition-all"
+              >
+                ⚡ 급속 예약<br />
+                <span className="text-xs font-normal opacity-80">({rapidChargers.length}대 가능)</span>
+              </button>
+            )}
+            {slowChargers.length > 0 && (
+              <button
+                onClick={() => handleChargerTypeSelect('SLOW')}
+                className="bg-green-600 text-white py-4 rounded-xl font-black text-base shadow-lg shadow-green-200 active:scale-95 transition-all"
+              >
+                🔌 완속 예약<br />
+                <span className="text-xs font-normal opacity-80">({slowChargers.length}대 가능)</span>
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setReserveStep('idle')}
+            className="w-full text-xs text-gray-400 hover:text-gray-600 py-1 transition-colors"
+          >
+            취소
+          </button>
+        </div>
+      );
+    }
+
+    // [기본 / 로딩 단계] 원래 버튼
+    return (
+      <div className="p-4 border-t border-gray-100 bg-white grid grid-cols-2 gap-3">
+        <button className="bg-gray-100 text-gray-800 py-4 rounded-xl font-bold text-base hover:bg-gray-200 transition-colors">
+          길찾기
+        </button>
+        <button
+          onClick={handleReservationClick}
+          disabled={reserveStep === 'loading'}
+          className="bg-blue-600 text-white py-4 rounded-xl font-black text-lg shadow-lg shadow-blue-200 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {reserveStep === 'loading' ? (
+            <>
+              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              조회 중...
+            </>
+          ) : '예약하기'}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full bg-white shadow-2xl border-l border-gray-100 font-sans">
       {/* [헤더] */}
@@ -59,8 +175,7 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
           </div>
           <h2 className="text-2xl font-bold leading-tight pr-8">{station.statNm}</h2>
           <p className="text-sm opacity-90">{station.addr}</p>
-          
-          {/* ✨ 상세 주소 길이에 따라 거리가 우측 또는 우측 하단으로 이동 */}
+
           <div className="flex flex-wrap items-end justify-between pt-2 border-t border-blue-500/30 mt-2 gap-y-2">
             <div className="flex gap-1 flex-1 min-w-[200px]">
               <span className="text-[12px] opacity-75 font-medium shrink-0">📍 상세:</span>
@@ -170,11 +285,9 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
           </div>
         </div>
       </div>
-      
-      <div className="p-4 border-t border-gray-100 bg-white grid grid-cols-2 gap-3">
-        <button className="bg-gray-100 text-gray-800 py-4 rounded-xl font-bold text-base hover:bg-gray-200 transition-colors">길찾기</button>
-        <button onClick={() => alert('준비 중인 서비스입니다.')} className="bg-blue-600 text-white py-4 rounded-xl font-black text-lg shadow-lg shadow-blue-200 active:scale-95 transition-all">예약하기</button>
-      </div>
+
+      {/* 하단 액션 버튼 — reserveStep 상태에 따라 렌더링 */}
+      {renderBottomAction()}
     </div>
   );
 };
