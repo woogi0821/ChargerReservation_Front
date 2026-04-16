@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import AuthService from '../../services/AuthService';
 
 const Header = () => {
-  const { loggedIn, setActiveModal } = useAuthStore();
-  const { handleLogout } = useLogout();
+  const { loggedIn, logout, setActiveModal } = useAuthStore();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -22,33 +21,22 @@ const Header = () => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-[80px] bg-white border-b border-gray-100 shadow-sm">
-      <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between">
+    <header className="fixed top-0 left-0 z-50 w-full h-[88px] bg-gradient-to-b from-[#E0F2FE]/60 via-[#F0F9FF]/80 to-white/95 backdrop-blur-sm border-b border-zinc-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)]">
+      <div className="max-w-[1440px] mx-auto h-full px-10 flex items-center justify-between">
+        
+        {/* 로고 영역 */}
+        <a href="/" className="flex items-center gap-3 transition-opacity hover:opacity-85 active:scale-[0.98]">
+          <span className="text-3xl text-[#3B82F6]">⚡</span>
+          <h1 className="text-[#3B82F6] text-2xl font-[900] tracking-[-0.02em] font-['Nunito']">
+            ChargeNow
+          </h1>
+        </a>
 
-        {/* 로고 */}
-        <button
-          onClick={() => navigate('/')}
-          className="text-xl font-black text-[#3B82F6] tracking-tight hover:opacity-80 transition-opacity"
-        >
-          ⚡ CHAEVI
-        </button>
-
-        {/* 네비게이션 */}
-        <nav className="hidden md:flex items-center gap-6">
-          <button
-            onClick={() => navigate('/stations')}
-            className="text-sm font-semibold text-gray-600 hover:text-[#3B82F6] transition-colors"
-          >
-            충전소 찾기
-          </button>
-          {loggedIn && (
-            <button
-              onClick={() => navigate('/reservations')}
-              className="text-sm font-semibold text-gray-600 hover:text-[#3B82F6] transition-colors"
-            >
-              내 예약
-            </button>
-          )}
+        {/* 중앙 네비게이션 */}
+        <nav className="flex items-center gap-2">
+          <a href="/" className="px-6 py-3 rounded-full bg-[#3B82F6]/10 text-[#191919] text-[1.05rem] font-bold transition-all hover:bg-[#3B82F6]/20">홈</a>
+          <a href="/stations" className="px-6 py-3 text-zinc-700 text-[1.05rem] font-semibold transition-colors hover:text-[#191919]">충전소 찾기</a>
+          <a href="/" className="px-6 py-3 text-zinc-700 text-[1.05rem] font-semibold transition-colors hover:text-[#191919]">고객센터</a>
         </nav>
 
         {/* 우측 메뉴 영역 */}
@@ -60,32 +48,25 @@ const Header = () => {
                 className="px-5 py-3 text-zinc-700 text-[1.05rem] font-semibold transition-colors hover:text-[#3B82F6]"
               >
                 마이페이지
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
+              </a>
+              <Button 
+                variant="primary" 
+                size="md" 
                 onClick={handleLogout}
+                className="px-4 py-2 shadow-lg hover:-translate-y-0.5 active:translate-y-0"
               >
                 로그아웃
               </Button>
-            </div>
+            </>
           ) : (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setActiveModal('LOGIN')}
-              >
-                로그인
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setActiveModal('REGISTER')}
-              >
-                회원가입
-              </Button>
-            </div>
+            <Button 
+              variant="primary" 
+              size="md" 
+              onClick={() => setActiveModal("LOGIN")}
+              className="px-10 py-4 shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+            >
+              로그인
+            </Button>
           )}
         </div>
       </div>
