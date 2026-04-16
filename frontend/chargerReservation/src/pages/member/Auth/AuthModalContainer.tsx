@@ -46,9 +46,7 @@ const AuthModalContainer = ({ activeModal, setActiveModal, handleCloseModal }: A
       )}
 
       {activeModal === "LOGIN" && (
-        <Login onSwitchToSignup={() => setActiveModal("SIGNUP")} 
-               onClose={handleCloseModal}
-        />
+        <Login onSwitchToSignup={() => setActiveModal("SIGNUP")} />
       )}
 
       {activeModal === "SIGNUP" && (
@@ -66,6 +64,7 @@ const AuthModalContainer = ({ activeModal, setActiveModal, handleCloseModal }: A
             setActiveModal("LOGIN");
           }}
           onLoginClick={() => setActiveModal("LOGIN")}
+          onClose={handleCloseModal}
         />
       )}
     </div>

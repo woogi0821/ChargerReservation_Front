@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 
@@ -5,72 +6,69 @@ import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 // 타입 정의
 // ─────────────────────────────────────────────
 
-interface StatCard {
-  label: string;
-  value: string;
-  unit: string;
+interface DashboardStats {
+  totalMembers: number;
+  todayReservations: number;
+  totalStations: number;
+  brokenChargers: number;
+  pendingInquiries: number;
 }
 
-// noshow 추가 — AdminReservationPage 와 동일하게 맞춤
 interface RecentReservation {
-  id: string;
-  userName: string;
-  stationName: string;
-  chargerType: string;
-  time: string;
-  status: "upcoming" | "ongoing" | "done" | "cancel" | "noshow";
+  reservationId: number;
+  memberId: number;
+  chargerId: string;
+  startTime: string;
+  status: string;
 }
 
 interface RecentNotice {
-  id: string;
+  noticeId: number;
   title: string;
-  createdAt: string;
-  isPinned: boolean;
+  fixYn: string;
+  insertTime: string;
+}
+
+interface RecentInquiry {
+  inquiryId: number;
+  memberId: number;
+  category: string;
+  title: string;
+  status: string;
+  insertTime: string;
+}
+
+interface RecentPenalty {
+  penaltyId: number;
+  memberId: number;
+  reason: string;
+  status: string;
+  insertTime: string;
 }
 
 // ─────────────────────────────────────────────
-// 임시 데이터 (나중에 API 연결 시 교체)
+// 예약 상태 스타일
 // ─────────────────────────────────────────────
 
-const STAT_CARDS: StatCard[] = [
-  { label: "총 회원수",   value: "1,284", unit: "명"   },
-  { label: "오늘 예약",   value: "38",    unit: "건"   },
-  { label: "총 충전소",   value: "5",     unit: "개소" },
-  { label: "고장 충전기", value: "2",     unit: "대"   },
-];
+const reservationStatusStyles: { [key: string]: { label: string; badge: string } } = {
+  RESERVED:  { label: "예정",   badge: "bg-blue-50 text-blue-600"     },
+  CHARGING:  { label: "진행중", badge: "bg-green-50 text-green-600"   },
+  COMPLETED: { label: "완료",   badge: "bg-gray-100 text-gray-500"    },
+  CANCELED:  { label: "취소",   badge: "bg-red-50 text-red-500"       },
+  NOSHOW:    { label: "노쇼",   badge: "bg-orange-50 text-orange-600" },
+};
 
-const RECENT_RESERVATIONS: RecentReservation[] = [
-  { id: "r001", userName: "김민준", stationName: "강남 테헤란로점",     chargerType: "급속 50kW",  time: "14:00", status: "upcoming" },
-  { id: "r002", userName: "이서연", stationName: "송파 잠실점",         chargerType: "급속 100kW", time: "13:00", status: "ongoing"  },
-  { id: "r003", userName: "박지훈", stationName: "마포 홍대점",         chargerType: "완속 7kW",   time: "12:00", status: "done"     },
-  { id: "r004", userName: "최수아", stationName: "서초 반포점",         chargerType: "급속 50kW",  time: "11:00", status: "cancel"   },
-  { id: "r005", userName: "정우성", stationName: "영등포 타임스퀘어점", chargerType: "급속 100kW", time: "10:00", status: "done"     },
-];
+// 패널티 상태 스타일
+const penaltyStatusStyles: { [key: string]: { label: string; badge: string } } = {
+  ACTIVE:   { label: "활성",   badge: "bg-red-50 text-red-600"      },
+  CLEARED:  { label: "해제",   badge: "bg-gray-100 text-gray-500"   },
+  CANCELED: { label: "취소",   badge: "bg-blue-50 text-blue-500"    },
+};
 
-const RECENT_NOTICES: RecentNotice[] = [
-  { id: "n001", title: "시스템 점검 안내",           createdAt: "2026.03.30", isPinned: true  },
-  { id: "n002", title: "충전 요금 변경 안내",         createdAt: "2026.03.28", isPinned: true  },
-  { id: "n003", title: "신규 충전소 오픈 안내",       createdAt: "2026.03.25", isPinned: false },
-  { id: "n004", title: "앱 업데이트 안내 (v2.1.0)",  createdAt: "2026.03.20", isPinned: false },
-  { id: "n005", title: "이벤트 안내 — 첫 충전 무료", createdAt: "2026.03.15", isPinned: false },
-];
-
-// ─────────────────────────────────────────────
-// 예약 상태 스타일 딕셔너리
-// noshow 추가 — AdminReservationPage 와 동일하게 맞춤
-// ─────────────────────────────────────────────
-
-const reservationStatusStyles: {
-  [key in "upcoming" | "ongoing" | "done" | "cancel" | "noshow"]: {
-    label: string;
-    badge: string;
-  };
-} = {
-  upcoming: { label: "예정",   badge: "bg-blue-50 text-blue-600"     },
-  ongoing:  { label: "진행중", badge: "bg-green-50 text-green-600"   },
-  done:     { label: "완료",   badge: "bg-gray-100 text-gray-500"    },
-  cancel:   { label: "취소",   badge: "bg-red-50 text-red-500"       },
-  noshow:   { label: "노쇼",   badge: "bg-orange-50 text-orange-600" },
+// 문의 상태 스타일
+const inquiryStatusStyles: { [key: string]: { label: string; badge: string } } = {
+  PENDING:  { label: "미답변",  badge: "bg-orange-50 text-orange-600" },
+  ANSWERED: { label: "답변완료", badge: "bg-green-50 text-green-600"  },
 };
 
 // ─────────────────────────────────────────────
@@ -78,123 +76,232 @@ const reservationStatusStyles: {
 // ─────────────────────────────────────────────
 
 const AdminDashboardPage = () => {
+
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentReservations, setRecentReservations] = useState<RecentReservation[]>([]);
+  const [recentNotices, setRecentNotices] = useState<RecentNotice[]>([]);
+  const [recentInquiries, setRecentInquiries] = useState<RecentInquiry[]>([]);
+  const [recentPenalties, setRecentPenalties] = useState<RecentPenalty[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const token = localStorage.getItem("accessToken");
+
+  const headers = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`,
+  };
+
+  // ── 데이터 조회 ─────────────────────────────
+
+  const fetchDashboard = async () => {
+    try {
+      const [statsRes, reservationRes, noticeRes, inquiryRes, penaltyRes] =
+        await Promise.all([
+          fetch("http://localhost:8080/api/admin/dashboard",     { headers }),
+          fetch("http://localhost:8080/api/admin/reservations",  { headers }),
+          fetch("http://localhost:8080/api/admin/notices",       { headers }),
+          fetch("http://localhost:8080/api/admin/inquiries",     { headers }),
+          fetch("http://localhost:8080/api/admin/penalties",     { headers }),
+        ]);
+
+      if (statsRes.ok)       setStats(await statsRes.json());
+      if (reservationRes.ok) setRecentReservations((await reservationRes.json()).slice(0, 5));
+      if (noticeRes.ok)      setRecentNotices((await noticeRes.json()).slice(0, 5));
+      if (inquiryRes.ok)     setRecentInquiries((await inquiryRes.json()).slice(0, 5));
+      if (penaltyRes.ok)     setRecentPenalties((await penaltyRes.json()).slice(0, 5));
+
+    } catch (error) {
+      console.error("서버 연결 실패", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  // ── 통계 카드 데이터 ────────────────────────
+
+  const statCards = [
+    { label: "총 회원수",    value: stats?.totalMembers?.toLocaleString()     ?? "-", unit: "명"   },
+    { label: "오늘 예약",    value: stats?.todayReservations?.toString()       ?? "-", unit: "건"   },
+    { label: "총 충전소",    value: stats?.totalStations?.toLocaleString()     ?? "-", unit: "개소" },
+    { label: "고장 충전기",  value: stats?.brokenChargers?.toLocaleString()    ?? "-", unit: "대"   },
+    { label: "미답변 문의",  value: stats?.pendingInquiries?.toString()        ?? "-", unit: "건"   },
+  ];
+
   return (
     <AdminLayout adminName="홍길동">
 
-      {/* 페이지 제목 */}
       <AdminPageHeader title="대시보드" />
 
       {/* ── 통계 카드 영역 ── */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {STAT_CARDS.map((card) => (
-          <div
-            key={card.label}
-            className="bg-white border border-gray-100 p-6 shadow-sm"
-          >
-            <p className="text-xs text-gray-400 tracking-wide mb-3">
-              {card.label}
-            </p>
+      <div className="grid grid-cols-5 gap-4 mb-6">
+        {statCards.map((card) => (
+          <div key={card.label} className="bg-white border border-gray-100 p-6 shadow-sm">
+            <p className="text-xs text-gray-400 tracking-wide mb-3">{card.label}</p>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-semibold text-gray-800">
-                {card.value}
-              </span>
-              <span className="text-xs text-gray-400">
-                {card.unit}
-              </span>
+              <span className="text-3xl font-semibold text-gray-800">{card.value}</span>
+              <span className="text-xs text-gray-400">{card.unit}</span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ── 하단 섹션 — 최근 예약 + 최근 공지 ── */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* ── 중단 섹션 — 최근 예약 + 최근 공지 ── */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
 
-        {/* ── 최근 예약 목록 ── */}
+        {/* 최근 예약 */}
         <div className="bg-white border border-gray-100 shadow-sm">
-
-          {/* 섹션 헤더 */}
           <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
             <div className="w-1 h-4 bg-blue-700" />
-            <h2 className="text-sm font-semibold text-gray-700 tracking-wide">
-              최근 예약
-            </h2>
-            <span className="text-xs text-gray-400">
-              최근 5건
-            </span>
+            <h2 className="text-sm font-semibold text-gray-700 tracking-wide">최근 예약</h2>
+            <span className="text-xs text-gray-400">최근 5건</span>
           </div>
-
-          {/* 예약 목록 */}
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">회원명</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">충전소</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">시간</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">상태</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">회원 ID</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">충전기 ID</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">시작시간</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">상태</th>
               </tr>
             </thead>
             <tbody>
-              {RECENT_RESERVATIONS.map((r) => {
-                const style = reservationStatusStyles[r.status];
-                return (
-                  <tr
-                    key={r.id}
-                    className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-5 py-3 text-gray-700 font-medium">{r.userName}</td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">{r.stationName}</td>
-                    <td className="px-5 py-3 text-gray-500">{r.time}</td>
-                    <td className="px-5 py-3">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>
-                        {style.label}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {isLoading ? (
+                <tr><td colSpan={4} className="px-5 py-6 text-center text-sm text-gray-300">불러오는 중...</td></tr>
+              ) : recentReservations.length === 0 ? (
+                <tr><td colSpan={4} className="px-5 py-6 text-center text-sm text-gray-300">예약이 없습니다</td></tr>
+              ) : (
+                recentReservations.map((r) => {
+                  const style = reservationStatusStyles[r.status] ?? { label: r.status, badge: "bg-gray-100 text-gray-500" };
+                  return (
+                    <tr key={r.reservationId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3 text-gray-700 font-medium">{r.memberId}</td>
+                      <td className="px-5 py-3 text-gray-500 text-xs">{r.chargerId}</td>
+                      <td className="px-5 py-3 text-gray-500 text-xs">{r.startTime?.slice(0, 10)}</td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>{style.label}</span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* ── 최근 공지사항 ── */}
+        {/* 최근 공지 */}
         <div className="bg-white border border-gray-100 shadow-sm">
-
-          {/* 섹션 헤더 */}
           <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
             <div className="w-1 h-4 bg-blue-700" />
-            <h2 className="text-sm font-semibold text-gray-700 tracking-wide">
-              최근 공지
-            </h2>
-            <span className="text-xs text-gray-400">
-              최근 5건
-            </span>
+            <h2 className="text-sm font-semibold text-gray-700 tracking-wide">최근 공지</h2>
+            <span className="text-xs text-gray-400">최근 5건</span>
           </div>
-
-          {/* 공지 목록 */}
           <ul>
-            {RECENT_NOTICES.map((notice) => (
-              <li
-                key={notice.id}
-                className="flex items-center justify-between px-5 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center gap-2 overflow-hidden">
-                  {notice.isPinned && (
-                    <span className="shrink-0 px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 font-medium rounded-sm">
-                      고정
-                    </span>
-                  )}
-                  <span className="text-sm text-gray-700 truncate">
-                    {notice.title}
+            {isLoading ? (
+              <li className="px-5 py-6 text-center text-sm text-gray-300">불러오는 중...</li>
+            ) : recentNotices.length === 0 ? (
+              <li className="px-5 py-6 text-center text-sm text-gray-300">공지가 없습니다</li>
+            ) : (
+              recentNotices.map((notice) => (
+                <li key={notice.noticeId}
+                  className="flex items-center justify-between px-5 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    {notice.fixYn === "Y" && (
+                      <span className="shrink-0 px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 font-medium rounded-sm">고정</span>
+                    )}
+                    <span className="text-sm text-gray-700 truncate">{notice.title}</span>
+                  </div>
+                  <span className="shrink-0 text-xs text-gray-400 ml-3">
+                    {notice.insertTime?.slice(0, 10)}
                   </span>
-                </div>
-                <span className="shrink-0 text-xs text-gray-400 ml-3">
-                  {notice.createdAt}
-                </span>
-              </li>
-            ))}
+                </li>
+              ))
+            )}
           </ul>
         </div>
+      </div>
 
+      {/* ── 하단 섹션 — 미답변 문의 + 패널티 현황 ── */}
+      <div className="grid grid-cols-2 gap-4">
+
+        {/* 미답변 문의 */}
+        <div className="bg-white border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+            <div className="w-1 h-4 bg-blue-700" />
+            <h2 className="text-sm font-semibold text-gray-700 tracking-wide">최근 문의</h2>
+            <span className="text-xs text-gray-400">최근 5건</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">카테고리</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">제목</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={3} className="px-5 py-6 text-center text-sm text-gray-300">불러오는 중...</td></tr>
+              ) : recentInquiries.length === 0 ? (
+                <tr><td colSpan={3} className="px-5 py-6 text-center text-sm text-gray-300">문의가 없습니다</td></tr>
+              ) : (
+                recentInquiries.map((inquiry) => {
+                  const style = inquiryStatusStyles[inquiry.status] ?? { label: inquiry.status, badge: "bg-gray-100 text-gray-500" };
+                  return (
+                    <tr key={inquiry.inquiryId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3 text-gray-500 text-xs">{inquiry.category}</td>
+                      <td className="px-5 py-3 text-gray-700 font-medium text-xs truncate max-w-32">{inquiry.title}</td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>{style.label}</span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 패널티 현황 */}
+        <div className="bg-white border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+            <div className="w-1 h-4 bg-blue-700" />
+            <h2 className="text-sm font-semibold text-gray-700 tracking-wide">최근 패널티</h2>
+            <span className="text-xs text-gray-400">최근 5건</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">회원 ID</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">사유</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={3} className="px-5 py-6 text-center text-sm text-gray-300">불러오는 중...</td></tr>
+              ) : recentPenalties.length === 0 ? (
+                <tr><td colSpan={3} className="px-5 py-6 text-center text-sm text-gray-300">패널티가 없습니다</td></tr>
+              ) : (
+                recentPenalties.map((penalty) => {
+                  const style = penaltyStatusStyles[penalty.status] ?? { label: penalty.status, badge: "bg-gray-100 text-gray-500" };
+                  return (
+                    <tr key={penalty.penaltyId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3 text-gray-700 font-medium">{penalty.memberId}</td>
+                      <td className="px-5 py-3 text-gray-500 text-xs truncate max-w-32">{penalty.reason}</td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>{style.label}</span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
     </AdminLayout>

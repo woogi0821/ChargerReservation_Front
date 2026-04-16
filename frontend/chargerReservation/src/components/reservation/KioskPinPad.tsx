@@ -1,5 +1,5 @@
 import { useState } from "react";
-import {Button} from "../../components/common/Button" //Button 컴포넌트가 완성되면 받아올것
+import Button from "../common/Button"
 
 interface KioskPinPadProps {
     //Pin번호의 최대 길이

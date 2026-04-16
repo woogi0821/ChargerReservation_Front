@@ -1,67 +1,115 @@
 import axios from "axios";
+import { useAuthStore } from "../store/useAuthStore";
 
-// react <-> springboot : json 객체(통신)
-// 목적: 리액트와 벡엔드를 통신하기 위한 설정 파일
+// ── JWT 디코더 (라이브러리 없이 브라우저 네이티브로 처리) ─────────────────────
+const decodeJwt = (token: string): Record<string, unknown> => {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
+};
 
+// ── Axios 인스턴스 ─────────────────────────────────────────────────────────────
 const common = axios.create({
-  baseURL: "http://localhost:8080/api", // 벡엔드주소
-  withCredentials: true,
+  baseURL: "http://localhost:8080/api",
+  withCredentials: true, // RT 쿠키 자동 전송
   headers: {
-    "Content-Type": "application/json", // 통신할 문서종류(json)
+    "Content-Type": "application/json",
   },
 });
 
+// ── 요청 인터셉터 ──────────────────────────────────────────────────────────────
+// AT를 메모리(Zustand)에서 꺼내서 Authorization + X-MemberId 헤더에 자동 주입
 common.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
+  const token = useAuthStore.getState().accessToken;
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+
+    // JWT 클레임에서 memberId 추출 → X-MemberId 헤더로 주입
+    const decoded = decodeJwt(token);
+    const memberId = decoded.memberId;
+    if (memberId !== undefined) {
+      config.headers["X-MemberId"] = String(memberId);
+    }
   }
+
   return config;
 });
 
-// 공통 벡엔드 요청(axios) 인터셉터 (옵션)
+// ── 응답 인터셉터 ──────────────────────────────────────────────────────────────
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
 
-// 공통 응답 인터셉터 (옵션) : 리액트에서 벡엔드랑 통신시 에러나면 여기서 모두 처리됩니다.
+// AT 갱신 완료 후 대기 중이던 요청들을 재실행
+const onRefreshed = (token: string) => {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+};
+
 common.interceptors.response.use(
-  (response) => response, 
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    
-    if (error.response?.status === 401) {
-      if (originalRequest.url.includes("/member/login")) {
-        alert("아이디 또는 비밀번호가 일치하지 않습니다.");
-        return Promise.reject(error); // ⬅️ 여기서 끝내야 밑으로 안 내려감!
-      }
 
-      // 토큰 만료로 인한 재발급 시도
-      if (!originalRequest._retry) {
-        originalRequest._retry = true;
-        const refreshToken = localStorage.getItem('refreshToken');
-
-        if (!refreshToken) {
-          if (window.location.pathname !== '/register') { // 회원가입 중이 아닐 때만 이동
-              localStorage.clear();
-          }
-          return Promise.reject(error);
-        }
-
-        try {
-          const res = await axios.post('http://localhost:8080/api/member/refresh', { refreshToken });
-          const { accessToken, refreshToken: newRefreshToken } = res.data;
-
-          localStorage.setItem('accessToken', accessToken);
-          localStorage.setItem('refreshToken', newRefreshToken);
-
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return axios(originalRequest); 
-        } catch (refreshError) {
-          localStorage.clear();
-          window.location.href = '/login';
-          return Promise.reject(refreshError);
-        }
-      }
-      
+    // 로그인 자체 실패는 별도 처리
+    if (originalRequest?.url?.includes("/member/login")) {
       return Promise.reject(error);
+    }
+
+    // 401: AT 만료 → refresh 시도
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      if (isRefreshing) {
+        // 이미 refresh 중이면 완료될 때까지 대기
+        return new Promise((resolve) => {
+          refreshSubscribers.push((token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(common(originalRequest));
+          });
+        });
+      }
+
+      isRefreshing = true;
+
+      try {
+        // RT는 httpOnly 쿠키로 자동 전송 — body 불필요
+        const res = await axios.post(
+          "http://localhost:8080/api/member/refresh",
+          {},
+          { withCredentials: true }
+        );
+
+        const { accessToken, memberGrade } = res.data;
+        useAuthStore.getState().login(memberGrade, accessToken);
+
+        onRefreshed(accessToken);
+
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        const decoded = decodeJwt(accessToken);
+        if (decoded.memberId !== undefined) {
+          originalRequest.headers["X-MemberId"] = String(decoded.memberId);
+        }
+
+        return common(originalRequest);
+      } catch {
+        // refresh 실패 → 로그아웃
+        useAuthStore.getState().logout();
+        window.location.href = "/";
+        return Promise.reject(error);
+      } finally {
+        isRefreshing = false;
+      }
     }
 
     const msg = error.response?.data?.message || "오류가 발생했습니다.";
@@ -69,7 +117,5 @@ common.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-// 로그인용 요청(Requset)인터셉터 추가 필요
 
 export default common;
