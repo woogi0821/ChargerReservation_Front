@@ -10,8 +10,18 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 // forwardRef로 감싸서 외부(Page)에서 이 input의 DOM에 접근할 수 있게 합니다.
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helperText, sizeVariant = "md", className = "", id, ...props }, ref) => {
-    
+  (
+    {
+      label,
+      error,
+      helperText,
+      sizeVariant = "md",
+      className = "",
+      id,
+      ...props
+    },
+    ref,
+  ) => {
     // 2. 기본 뼈대: placeholder 색상(placeholder:text-zinc-400) 등을 추가해 디테일을 잡습니다.
     const baseStyle = `
       w-full border-2 rounded-xl transition-all outline-none 
@@ -34,7 +44,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
     return (
       <div className={`flex flex-col gap-1.5 w-full ${className}`}>
-        {/* Label 영역 */}
         {label && (
           <label htmlFor={id} className="text-sm font-bold text-zinc-700 ml-1">
             {label}
@@ -52,13 +61,19 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         {/* 하단 메시지 영역 (Error 우선순위) */}
         {(error || helperText) && (
-          <span className={`text-xs ml-1 font-medium ${error ? "text-red-500" : "text-zinc-500"}`}>
+          <span
+            className={`
+            text-xs ml-1 font-medium 
+            ${error ? "text-red-500 mt-1 mb-2" : "text-zinc-500 mt-1"} 
+          `}
+          >
+            {/* ✅ mt-1로 input과 살짝 띄우고, mb-2로 다음 라벨과 간격을 확보합니다. */}
             {error || helperText}
           </span>
         )}
       </div>
     );
-  }
+  },
 );
 
 // 디버깅 시 컴포넌트 이름을 명확히 확인하기 위함
