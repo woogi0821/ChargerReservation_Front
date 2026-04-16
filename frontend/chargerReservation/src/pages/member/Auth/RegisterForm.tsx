@@ -181,7 +181,6 @@ function Register({ onLoginClick, onSignupSubmit }: SignupFormProps) {
                     : ""
                 }
               />
-              {/* ✅ 아이디 확인 결과 메시지 */}
               {isIdChecked && isIdAvailable && (
                 <p className="text-green-600 text-xs mt-1 ml-1 font-bold">
                   사용 가능한 아이디입니다.
