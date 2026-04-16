@@ -16,6 +16,7 @@ import Stations from "../pages/station/Stations";
 import ProtectedRoute from "../common/ProtectedRoute";
 import MyPage from "../pages/member/MyPage";
 
+
 export const AppRouter = () => {
   return (
     <BrowserRouter>
@@ -26,7 +27,6 @@ export const AppRouter = () => {
         <Route element={<BasicLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/mypage" element={<MyPage />} />
-          <Route path="/stations" element={<Stations />} />
           <Route path="/reservation" element={<ReservationPage />} />
           <Route path="/reservations" element={<MyPage />} />
         </Route>
@@ -54,6 +54,10 @@ export const AppRouter = () => {
           <Route path="/admin/penalty" element={<AdminPenaltyPage />} />
           <Route path="/admin/inquiry" element={<AdminInquiryPage />} />
         </Route>
+        {/* ==========================================
+            충전소 찾기
+           ========================================== */}
+        <Route path="/stations" element={<Stations />} />
       </Routes>
     </BrowserRouter>
   );
