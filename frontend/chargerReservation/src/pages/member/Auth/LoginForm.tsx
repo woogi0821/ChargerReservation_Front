@@ -36,6 +36,7 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       localStorage.setItem("adminId",   String(adminId ?? ""));
       localStorage.setItem("adminRole", adminRole ?? "");
       localStorage.setItem("adminPart", adminPart ?? "");
+      localStorage.setItem("accessToken",  accessToken);
 
       closeModal();
 
