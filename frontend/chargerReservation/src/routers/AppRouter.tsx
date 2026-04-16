@@ -15,7 +15,6 @@ import MainLayout from "../layout/basic/basicLayout";
 import Stations from "../pages/station/Stations";
 import ProtectedRoute from "../common/ProtectedRoute";
 import MyPage from "../pages/member/MyPage";
-import Stations from "../pages/station/Stations";
 import BasicLayout from "../layout/basic/basicLayout";
 
 export const AppRouter = () => {
