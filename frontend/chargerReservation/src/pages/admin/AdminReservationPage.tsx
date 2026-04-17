@@ -2,10 +2,6 @@ import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 
-// ─────────────────────────────────────────────
-// 타입 정의
-// ─────────────────────────────────────────────
-
 interface Reservation {
   reservationId: number;
   memberId: number;
@@ -14,48 +10,32 @@ interface Reservation {
   startTime: string;
   endTime: string;
   actualEndTime: string | null;
-  status: "RESERVED" | "CHARGING" | "COMPLETED" | "CANCELED" | "NOSHOW";
+  status: string;
 }
 
 interface FilterTab {
-  value: Reservation["status"] | "all";
+  value: string;
   label: string;
 }
 
-// ─────────────────────────────────────────────
-// 필터 탭 목록
-// ─────────────────────────────────────────────
-
+// ✅ NO_SHOW 로 수정
 const FILTER_TABS: FilterTab[] = [
   { value: "all",       label: "전체"   },
   { value: "RESERVED",  label: "예정"   },
   { value: "CHARGING",  label: "진행중" },
   { value: "COMPLETED", label: "완료"   },
   { value: "CANCELED",  label: "취소"   },
-  { value: "NOSHOW",    label: "노쇼"   },
+  { value: "NO_SHOW",   label: "노쇼"   },
 ];
 
-// ─────────────────────────────────────────────
-// 상태별 스타일 딕셔너리
-// ─────────────────────────────────────────────
-
-const reservationStatusStyles: {
-  [key in "RESERVED" | "CHARGING" | "COMPLETED" | "CANCELED" | "NOSHOW"]: {
-    label: string;
-    badge: string;
-  };
-} = {
+// ✅ NO_SHOW 로 수정
+const reservationStatusStyles: { [key: string]: { label: string; badge: string } } = {
   RESERVED:  { label: "예정",   badge: "bg-blue-50 text-blue-600"     },
   CHARGING:  { label: "진행중", badge: "bg-green-50 text-green-600"   },
   COMPLETED: { label: "완료",   badge: "bg-gray-100 text-gray-500"    },
   CANCELED:  { label: "취소",   badge: "bg-red-50 text-red-500"       },
-  NOSHOW:    { label: "노쇼",   badge: "bg-orange-50 text-orange-600" },
+  NO_SHOW:   { label: "노쇼",   badge: "bg-orange-50 text-orange-600" },
 };
-
-// ─────────────────────────────────────────────
-// 권한 체크
-// SUPER 또는 RESERVATION 파트만 강제취소 가능
-// ─────────────────────────────────────────────
 
 const canEditReservation = (): boolean => {
   const adminRole = localStorage.getItem("adminRole");
@@ -63,20 +43,13 @@ const canEditReservation = (): boolean => {
   return adminRole === "SUPER" || adminPart === "RESERVATION" || adminPart === "ALL";
 };
 
-// ─────────────────────────────────────────────
-// 컴포넌트
-// ─────────────────────────────────────────────
-
 const AdminReservationPage = () => {
 
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [activeFilter, setActiveFilter] = useState<FilterTab["value"]>("all");
+  const [activeFilter, setActiveFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
 
-  // 수정 권한 여부
   const hasEditPermission = canEditReservation();
-
-  // ── 예약 목록 조회 ───────────────────────────
 
   const fetchReservations = async () => {
     try {
@@ -107,8 +80,6 @@ const AdminReservationPage = () => {
     fetchReservations();
   }, []);
 
-  // ── 예약 강제 취소 ───────────────────────────
-
   const onForceCancel = async (reservationId: number) => {
     if (!hasEditPermission) return;
     if (!window.confirm("정말 강제 취소하시겠습니까?")) return;
@@ -131,14 +102,11 @@ const AdminReservationPage = () => {
         return;
       }
 
-      // 취소 성공 시 목록 새로고침
       fetchReservations();
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
   };
-
-  // ── 필터링 ─────────────────────────────────
 
   const filteredReservations = activeFilter === "all"
     ? reservations
@@ -211,7 +179,8 @@ const AdminReservationPage = () => {
                 </tr>
               ) : (
                 filteredReservations.map((reservation) => {
-                  const style = reservationStatusStyles[reservation.status];
+                  const style = reservationStatusStyles[reservation.status]
+                    ?? { label: reservation.status, badge: "bg-gray-100 text-gray-500" };
                   return (
                     <tr key={reservation.reservationId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                       <td className="px-5 py-3 text-gray-400">{reservation.reservationId}</td>
@@ -225,8 +194,6 @@ const AdminReservationPage = () => {
                           {style.label}
                         </span>
                       </td>
-
-                      {/* 강제취소 버튼 — RESERVED / CHARGING 상태일 때만 표시 */}
                       <td className="px-5 py-3">
                         {(reservation.status === "RESERVED" || reservation.status === "CHARGING") && (
                           <button

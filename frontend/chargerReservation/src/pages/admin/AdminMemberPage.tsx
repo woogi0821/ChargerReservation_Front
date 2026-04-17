@@ -2,10 +2,6 @@ import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 
-// ─────────────────────────────────────────────
-// 타입 정의
-// ─────────────────────────────────────────────
-
 interface Member {
   memberId: number;
   loginId: string;
@@ -15,11 +11,8 @@ interface Member {
   status: string;
   penaltyCount: number;
   insertTime: string;
+  memberGrade: string; // ✅ 추가
 }
-
-// ─────────────────────────────────────────────
-// 상태별 스타일
-// ─────────────────────────────────────────────
 
 const memberStatusStyles: { [key: string]: { label: string; badge: string } } = {
   ACTIVE:    { label: "정상", badge: "bg-green-50 text-green-600" },
@@ -27,19 +20,11 @@ const memberStatusStyles: { [key: string]: { label: string; badge: string } } = 
   WITHDRAWN: { label: "탈퇴", badge: "bg-gray-100 text-gray-400"  },
 };
 
-// ─────────────────────────────────────────────
-// 권한 체크
-// ─────────────────────────────────────────────
-
 const canEditMember = (): boolean => {
   const adminRole = localStorage.getItem("adminRole");
   const adminPart = localStorage.getItem("adminPart");
   return adminRole === "SUPER" || adminPart === "MEMBER" || adminPart === "ALL";
 };
-
-// ─────────────────────────────────────────────
-// 컴포넌트
-// ─────────────────────────────────────────────
 
 const AdminMemberPage = () => {
 
@@ -47,10 +32,9 @@ const AdminMemberPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [activeTab, setActiveTab] = useState<"NORMAL" | "ADMIN">("NORMAL"); // ✅ 탭 상태
 
   const hasEditPermission = canEditMember();
-
-  // ── 회원 목록 조회 ───────────────────────────
 
   const fetchMembers = async () => {
     try {
@@ -76,8 +60,6 @@ const AdminMemberPage = () => {
     fetchMembers();
   }, []);
 
-  // ── 회원 상태 변경 ───────────────────────────
-
   const onChangeStatus = async (memberId: number, newStatus: string) => {
     if (newStatus === "WITHDRAWN" && !window.confirm("정말 탈퇴 처리하시겠습니까?")) return;
     try {
@@ -100,9 +82,13 @@ const AdminMemberPage = () => {
     }
   };
 
-  // ── 검색 필터링 ─────────────────────────────
+  // ✅ 탭 기준으로 필터링
+  const tabFiltered = members.filter((m) =>
+    activeTab === "NORMAL" ? m.memberGrade === "N" : m.memberGrade === "Y"
+  );
 
-  const filteredMembers = members.filter((m) =>
+  // ✅ 검색 필터링
+  const filteredMembers = tabFiltered.filter((m) =>
     m.name?.includes(searchQuery) || m.email?.includes(searchQuery)
   );
 
@@ -112,6 +98,8 @@ const AdminMemberPage = () => {
       <AdminPageHeader title="회원 관리" />
 
       <div className="bg-white border border-gray-100 shadow-sm">
+
+        {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-1 h-4 bg-blue-700" />
@@ -127,6 +115,37 @@ const AdminMemberPage = () => {
           />
         </div>
 
+        {/* ✅ 탭 */}
+        <div className="flex border-b border-gray-100">
+          <button
+            onClick={() => { setActiveTab("NORMAL"); setSearchQuery(""); }}
+            className={`px-5 py-3 text-xs tracking-wide transition-colors border-b-2
+              ${activeTab === "NORMAL"
+                ? "text-blue-700 border-b-blue-700 font-medium"
+                : "text-gray-400 border-b-transparent hover:text-gray-600"
+              }`}
+          >
+            일반회원
+            <span className="ml-1 text-gray-300">
+              {members.filter((m) => m.memberGrade === "N").length}
+            </span>
+          </button>
+          <button
+            onClick={() => { setActiveTab("ADMIN"); setSearchQuery(""); }}
+            className={`px-5 py-3 text-xs tracking-wide transition-colors border-b-2
+              ${activeTab === "ADMIN"
+                ? "text-blue-700 border-b-blue-700 font-medium"
+                : "text-gray-400 border-b-transparent hover:text-gray-600"
+              }`}
+          >
+            관리자
+            <span className="ml-1 text-gray-300">
+              {members.filter((m) => m.memberGrade === "Y").length}
+            </span>
+          </button>
+        </div>
+
+        {/* 테이블 */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -149,7 +168,7 @@ const AdminMemberPage = () => {
               ) : filteredMembers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-300">
-                    검색 결과가 없습니다
+                    {searchQuery ? "검색 결과가 없습니다" : "회원이 없습니다"}
                   </td>
                 </tr>
               ) : (
@@ -245,11 +264,12 @@ const AdminMemberPage = () => {
 
             <div className="px-6 py-5 space-y-4">
               {[
-                { label: "이름",    value: selectedMember.name     },
-                { label: "이메일",  value: selectedMember.email    },
-                { label: "연락처",  value: selectedMember.phone    },
-                { label: "패널티",  value: `${selectedMember.penaltyCount}회` },
-                { label: "가입일",  value: selectedMember.insertTime?.slice(0, 10) },
+                { label: "이름",   value: selectedMember.name  },
+                { label: "이메일", value: selectedMember.email },
+                { label: "연락처", value: selectedMember.phone },
+                { label: "패널티", value: `${selectedMember.penaltyCount}회` },
+                { label: "구분",   value: selectedMember.memberGrade === "Y" ? "관리자" : "일반회원" },
+                { label: "가입일", value: selectedMember.insertTime?.slice(0, 10) },
               ].map((row) => (
                 <div key={row.label} className="flex items-center border-b border-gray-50 pb-3">
                   <span className="w-20 text-xs text-gray-400 tracking-wide">{row.label}</span>
