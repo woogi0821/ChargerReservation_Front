@@ -15,6 +15,7 @@ import BasicLayout from "../layout/basic/basicLayout";
 import Stations from "../pages/station/Stations";
 import ProtectedRoute from "../common/ProtectedRoute";
 import MyPage from "../pages/member/MyPage";
+import Notice from "../pages/notice/Notice";
 
 export const AppRouter = () => {
   return (
@@ -28,6 +29,8 @@ export const AppRouter = () => {
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/reservation" element={<ReservationPage />} />
           <Route path="/stations" element={<Stations />} />
+          <Route path="/reservations" element={<MyPage />} />
+          <Route path="/notices" element={<Notice />} />
         </Route>
 
         {/* 소셜 로그인 콜백 (헤더 불필요) */}
