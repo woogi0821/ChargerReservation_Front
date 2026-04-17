@@ -39,11 +39,7 @@ export const stationService = {
   getStationDetail: async (statId: string, type: string = "급속", userLat?: number, userLng?: number) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/${statId}`, {
-        params: { 
-          type, 
-          userLat, 
-          userLng 
-        }
+        params: { type, userLat, userLng }
       });
       return response.data;
     } catch (error) {
@@ -58,16 +54,25 @@ export const stationService = {
   searchStations: async (keyword: string, lat: number, lng: number) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/search`, {
-        params: { 
-          keyword, 
-          lat, 
-          lng 
-        }
+        params: { keyword, lat, lng }
       });
       return response.data;
     } catch (error) {
       console.error("충전소 검색 실패:", error);
       return [];
     }
-  }
-}; // 객체 닫는 괄호가 여기까지 와야 합니다.
+  },
+
+  /**
+   * 5. ✅ 추가 — 메인페이지 통계용
+   */
+  getStats: async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/stats`);
+      return response.data;
+    } catch (error) {
+      console.error("통계 로드 실패:", error);
+      return null;
+    }
+  },
+};
