@@ -9,12 +9,13 @@ interface AdminLayoutProps {
 
 export const AdminLayout = ({
   children,
-  adminName = "관리자",
 }: AdminLayoutProps) => {
 
   const navigate = useNavigate();
 
-  // ✅ 수정 — localStorage 전체 삭제 후 메인으로 이동
+  // ✅ 수정 — localStorage 에서 실제 이름 꺼내기
+  const adminName = localStorage.getItem("adminName") ?? "관리자";
+
   const onLogout = () => {
     localStorage.clear();
     navigate("/");
