@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import reservationService from '../../services/reservationService';
 import type { Charger } from '../../types/reservation';
@@ -10,32 +10,31 @@ interface StationDetailProps {
 
 const StationDetail = ({ station, onClose }: StationDetailProps) => {
   const navigate = useNavigate();
-
   const [reserveStep, setReserveStep] = useState<'idle' | 'loading' | 'selecting'>('idle');
   const [availableChargers, setAvailableChargers] = useState<Charger[]>([]);
 
+  // ✅ 위에서 내려오는 애니메이션
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (station) {
+      // 마운트 직후 한 프레임 뒤에 visible = true → transition 발동
+      const t = requestAnimationFrame(() => setVisible(true));
+      return () => cancelAnimationFrame(t);
+    } else {
+      setVisible(false);
+    }
+  }, [station]);
+
   if (!station) return null;
 
-// ✅ DTO의 변수명(brokenCount, totalCount 등)에 맞춰서 수정
   const formatStatusWithIcon = (status: string, type: '급속' | '완속') => {
     if (!status) return null;
-    
-    // 1. DTO에서 이미 만들어준 status 문자열을 활용하되, 
-    // "급속 " 이나 "완속 " 글자는 중복이니 제거하고 숫자 부분만 추출합니다.
     const displayStatus = status.replace('급속 ', '').replace('완속 ', '');
-    
-    // 2. 만약 개별 고장 대수가 DTO 필드에 따로 없다면 문자열에서 직접 추출 (고장1 또는 고장:1 대응)
-    const brokenMatch = status.match(/고장:?(\d+)/);
-    const brokenCount = brokenMatch ? brokenMatch[1] : null;
-    
     const icon = type === '급속' ? '⚡' : '🔌';
-    
     return (
       <div className="flex items-center gap-1.5 whitespace-nowrap">
         <span className="text-base">{icon}</span>
-        <span className="text-sm font-black text-inherit">
-          {type}: {displayStatus}
-        </span>
+        <span className="text-sm font-black text-inherit">{type}: {displayStatus}</span>
       </div>
     );
   };
@@ -45,9 +44,7 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
     const diff = Math.floor(current - last);
     if (diff === 0) return null;
     return (
-      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
-        diff > 0 ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'
-      }`}>
+      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${diff > 0 ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
         {diff > 0 ? '▲' : '▼'} {Math.abs(diff)}원
       </span>
     );
@@ -70,16 +67,13 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
     try {
       const chargers = await reservationService.getChargersByStation(station.statId);
       const available = chargers.filter(c => c.stat === '2');
-
       if (available.length === 0) {
         alert('현재 예약 가능한 충전기가 없습니다.');
         setReserveStep('idle');
         return;
       }
-
       const rapidList = available.filter(c => c.chargerTypeNm === '급속');
       const slowList  = available.filter(c => c.chargerTypeNm === '완속');
-
       if (rapidList.length > 0 && slowList.length === 0) {
         navigate('/reservation', { state: { selectedCharger: rapidList[0] } });
         return;
@@ -88,7 +82,6 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
         navigate('/reservation', { state: { selectedCharger: slowList[0] } });
         return;
       }
-
       setAvailableChargers(available);
       setReserveStep('selecting');
     } catch {
@@ -109,25 +102,17 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
       const rapidChargers = availableChargers.filter(c => c.chargerTypeNm === '급속');
       const slowChargers  = availableChargers.filter(c => c.chargerTypeNm === '완속');
       return (
-        <div className="p-4 border-t border-gray-100 bg-white space-y-2">
+        <div className="p-4 border-t border-gray-100 bg-white space-y-2 shrink-0">
           <p className="text-xs text-gray-500 text-center font-medium mb-1">충전 방식을 선택해주세요</p>
           <div className="grid grid-cols-2 gap-3">
             {rapidChargers.length > 0 && (
-              <button
-                onClick={() => handleChargerTypeSelect('RAPID')}
-                className="bg-blue-600 text-white py-4 rounded-xl font-black text-base shadow-lg shadow-blue-200 active:scale-95 transition-all"
-              >
-                ⚡ 급속 예약<br />
-                <span className="text-xs font-normal opacity-80">({rapidChargers.length}대 가능)</span>
+              <button onClick={() => handleChargerTypeSelect('RAPID')} className="bg-blue-600 text-white py-4 rounded-xl font-black text-base shadow-lg shadow-blue-200 active:scale-95 transition-all">
+                ⚡ 급속 예약<br /><span className="text-xs font-normal opacity-80">({rapidChargers.length}대 가능)</span>
               </button>
             )}
             {slowChargers.length > 0 && (
-              <button
-                onClick={() => handleChargerTypeSelect('SLOW')}
-                className="bg-green-600 text-white py-4 rounded-xl font-black text-base shadow-lg shadow-green-200 active:scale-95 transition-all"
-              >
-                🔌 완속 예약<br />
-                <span className="text-xs font-normal opacity-80">({slowChargers.length}대 가능)</span>
+              <button onClick={() => handleChargerTypeSelect('SLOW')} className="bg-green-600 text-white py-4 rounded-xl font-black text-base shadow-lg shadow-green-200 active:scale-95 transition-all">
+                🔌 완속 예약<br /><span className="text-xs font-normal opacity-80">({slowChargers.length}대 가능)</span>
               </button>
             )}
           </div>
@@ -135,9 +120,8 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
         </div>
       );
     }
-
     return (
-      <div className="p-4 border-t border-gray-100 bg-white grid grid-cols-2 gap-3">
+      <div className="p-4 border-t border-gray-100 bg-white grid grid-cols-2 gap-3 shrink-0">
         <button className="bg-gray-100 text-gray-800 py-4 rounded-xl font-bold text-base hover:bg-gray-200 transition-colors">길찾기</button>
         <button
           onClick={handleReservationClick}
@@ -145,23 +129,147 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
           className="bg-blue-600 text-white py-4 rounded-xl font-black text-lg shadow-lg shadow-blue-200 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {reserveStep === 'loading' ? (
-            <>
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-              조회 중...
-            </>
+            <><svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>조회 중...</>
           ) : '예약하기'}
         </button>
       </div>
     );
   };
 
-  return (
-    <div className="flex flex-col h-full bg-white shadow-2xl border-l border-gray-100 font-sans">
+  // =============================================
+  // 📱 모바일 레이아웃 (하단바 위 ~ 화면 최상단)
+  // =============================================
+const MobileDetail = () => (
+  <div
+    className={`
+      flex flex-col h-full bg-white font-sans
+      /* ✅ 위에서 아래로 내려오는 애니메이션 고정 */
+      transition-transform duration-500 ease-out
+      ${visible ? 'translate-y-0' : '-translate-y-full'}
+    `}
+  >
+    {/* 헤더 */}
+    <div className="px-5 pt-4 pb-3 bg-blue-600 text-white relative shrink-0">
+        <button onClick={onClose} className="absolute top-3 right-4 p-1.5 hover:bg-blue-700 rounded-full transition-colors z-10">
+          <span className="text-lg text-white">✕</span>
+        </button>
+
+        {/* 운영사 */}
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-[10px] font-bold bg-white text-blue-600 px-2 py-0.5 rounded shadow-sm">운영사</span>
+          <span className="text-xs font-medium opacity-90">{station.bnm || '정보없음'}</span>
+          <span className="ml-auto text-[11px] font-bold bg-blue-700/50 px-2 py-0.5 rounded whitespace-nowrap">{station.distance}km</span>
+        </div>
+
+        {/* 1. 충전소명 */}
+        <h2 className="text-lg font-bold leading-tight pr-8 mb-0.5">{station.statNm}</h2>
+        {/* 2. 주소 */}
+        <p className="text-xs opacity-80 leading-snug">{station.addr}</p>
+        {/* 3. 상세주소 */}
+        {station.location && (
+          <p className="text-[11px] opacity-70 mt-0.5">📍 {station.location}</p>
+        )}
+      </div>
+
+      {/* 스크롤 영역 */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+
+        {/* 4. 실시간 현황 + 요금 한줄 (3개) */}
+        <div className="px-4 py-3 border-b border-gray-100">
+          <div className="grid grid-cols-3 gap-2">
+            {/* 급속 현황 */}
+            <div className="bg-blue-50 rounded-xl p-3 flex flex-col items-center justify-center gap-1 text-blue-700">
+              <span className="text-lg">⚡</span>
+              <span className="text-[10px] font-bold text-blue-500">급속</span>
+              <span className="text-xs font-black text-center leading-tight">
+                {station.fastChargerStatus
+                  ? station.fastChargerStatus.replace('급속 ', '')
+                  : '정보없음'}
+              </span>
+            </div>
+
+            {/* 완속 현황 */}
+            <div className="bg-green-50 rounded-xl p-3 flex flex-col items-center justify-center gap-1 text-green-700">
+              <span className="text-lg">🔌</span>
+              <span className="text-[10px] font-bold text-green-500">완속</span>
+              <span className="text-xs font-black text-center leading-tight">
+                {station.slowChargerStatus
+                  ? station.slowChargerStatus.replace('완속 ', '')
+                  : '정보없음'}
+              </span>
+            </div>
+
+            {/* 요금 */}
+            <div className="bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center gap-1">
+              <span className="text-lg">💰</span>
+              <span className="text-[10px] font-bold text-gray-400">요금</span>
+              <div className="text-center">
+                {hasFast && station.currentPrice && station.currentPrice > 0 ? (
+                  <p className="text-xs font-black text-blue-600 leading-tight">{Math.floor(station.currentPrice)}원</p>
+                ) : null}
+                {hasSlow && station.slowPrice && station.slowPrice > 0 ? (
+                  <p className="text-xs font-black text-green-600 leading-tight">{Math.floor(station.slowPrice)}원</p>
+                ) : (
+                  !hasFast || !station.currentPrice ? <p className="text-[10px] text-gray-400 leading-tight">현장확인</p> : null
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 시설 정보 (compact) */}
+        <div className="px-4 py-3 space-y-2">
+          {/* 이용시간 + 주차 한줄 */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2 bg-white border border-gray-100 px-3 py-2.5 rounded-xl shadow-sm">
+              <span className="text-base">🔓</span>
+              <div>
+                <p className="text-[9px] text-gray-400 font-bold">이용시간</p>
+                <p className="text-xs font-bold text-gray-700">{station.useTime || '24시간'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 bg-white border border-gray-100 px-3 py-2.5 rounded-xl shadow-sm">
+              <span className="text-base">🅿️</span>
+              <div>
+                <p className="text-[9px] text-gray-400 font-bold">주차</p>
+                <p className="text-xs font-bold text-gray-700">
+                  {station.limitYn === 'Y' ? '제한' : '가능'} · {station.parkingFree === 'Y' ? '무료' : '유료'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 이용제한 */}
+          <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border ${hasRestriction ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
+            <span className="text-base mt-0.5">{hasRestriction ? '⚠️' : '✅'}</span>
+            <div>
+              <p className={`text-[9px] font-bold uppercase ${hasRestriction ? 'text-red-400' : 'text-green-400'}`}>이용제한</p>
+              <p className={`text-xs font-bold ${hasRestriction ? 'text-red-700' : 'text-green-700'}`}>
+                {hasRestriction ? station.limitDetail : '제한없음'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. 길찾기 + 예약하기 한줄 */}
+      {renderBottomAction()}
+    </div>
+  );
+
+  // =============================================
+  // 🖥️ 데스크탑 레이아웃 (기존 그대로)
+  // =============================================
+  const DesktopDetail = () => (
+    <div
+      className={`
+        flex flex-col h-full bg-white shadow-2xl border-l border-gray-100 font-sans
+        transition-transform duration-500 ease-out
+        ${visible ? 'translate-x-0' : '-translate-x-full'}
+      `}
+    >
       {/* 헤더 */}
-      <div className="p-6 bg-blue-600 text-white relative">
+      <div className="p-6 bg-blue-600 text-white relative shrink-0">
         <button onClick={onClose} className="absolute top-4 right-4 p-2 hover:bg-blue-700 rounded-full transition-colors z-10">
           <span className="text-xl text-white">✕</span>
         </button>
@@ -185,11 +293,10 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* 실시간 현황 - 디자인 변경 없음 */}
+        {/* 실시간 현황 */}
         <div className="p-6 border-b border-gray-50">
           <h3 className="text-sm font-extrabold text-gray-900 mb-4 flex items-center gap-2">
-            <span className="w-1 h-4 bg-blue-600 rounded-full"></span>
-            실시간 충전 현황
+            <span className="w-1 h-4 bg-blue-600 rounded-full"></span>실시간 충전 현황
           </h3>
           <div className={`flex ${hasFast && hasSlow ? 'flex-row' : 'flex-col items-center'} gap-2.5`}>
             {hasFast && (
@@ -267,7 +374,9 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
             <span className="text-xl">{hasRestriction ? '⚠️' : '✅'}</span>
             <div>
               <p className={`text-[10px] font-bold uppercase ${hasRestriction ? 'text-red-400' : 'text-green-400'}`}>Restriction Detail</p>
-              <p className={`text-sm font-bold ${hasRestriction ? 'text-red-700' : 'text-green-700'}`}>{hasRestriction ? station.limitDetail : '제한사항 없음 (이용가능)'}</p>
+              <p className={`text-sm font-bold ${hasRestriction ? 'text-red-700' : 'text-green-700'}`}>
+                {hasRestriction ? station.limitDetail : '제한사항 없음 (이용가능)'}
+              </p>
             </div>
           </div>
         </div>
@@ -275,6 +384,19 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
 
       {renderBottomAction()}
     </div>
+  );
+
+  return (
+    <>
+      {/* 📱 모바일: block / 🖥️ 데스크탑: hidden */}
+      <div className="block md:hidden h-full overflow-hidden">
+        <MobileDetail />
+      </div>
+      {/* 🖥️ 데스크탑: hidden / 📱 모바일: hidden */}
+      <div className="hidden md:block h-full overflow-hidden">
+        <DesktopDetail />
+      </div>
+    </>
   );
 };
 
