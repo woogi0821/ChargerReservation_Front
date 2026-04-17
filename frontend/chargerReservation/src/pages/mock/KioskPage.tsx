@@ -14,12 +14,14 @@ type KioskStep = "STANDBY" | "PIN_INPUT" | "CHARGING" | "DONE";
 
 export const ChargerMain = () => {
   const [searchParams] = useSearchParams();
+  const statId      = searchParams.get("statId") ?? "";
   const chargerId   = searchParams.get("chargerId") ?? "";
   const chargerType = searchParams.get("type") ?? "RAPID"; // "RAPID" | "SLOW"
 
   // ── WebSocket 실시간 상태 ────────────────────────────────────────────────
   // chargerStatus: "AVAILABLE" | "RESERVED" | "CHARGING" | "BROKEN"
-  const { chargerStatus, isConnected } = useChargerSocket(chargerId);
+  const { chargerStatus, isConnected, broadcastChargerId } = useChargerSocket(statId ,chargerId);
+  const effectiveChargerId = chargerId || broadcastChargerId;
 
   // ── 화면 단계 상태 ───────────────────────────────────────────────────────
   const [step, setStep] = useState<KioskStep>("STANDBY");
@@ -53,7 +55,7 @@ export const ChargerMain = () => {
   };
 
   // ── chargerId 없으면 안내 화면 ───────────────────────────────────────────
-  if (!chargerId) {
+  if ((statId && !chargerId) || (!statId && chargerId)) {
     return (
       <div
         className="flex min-h-screen items-center justify-center"
@@ -62,7 +64,7 @@ export const ChargerMain = () => {
         <div className="text-center">
           <p className="text-4xl mb-4">🔌</p>
           <p className="text-gray-500 font-semibold">충전기 ID가 필요합니다.</p>
-          <p className="text-gray-300 text-sm mt-2">/kiosk?chargerId=XXXX_01&type=RAPID</p>
+          <p className="text-gray-300 text-sm mt-2">/kiosk?chargerId=05&type=RAPID</p>
         </div>
       </div>
     );
@@ -127,7 +129,7 @@ export const ChargerMain = () => {
           <KioskStandby
             chargerStatus={chargerStatus ?? "AVAILABLE"}
             chargerType={chargerType}
-            chargerId={chargerId}
+            chargerId={effectiveChargerId}
             onPinInputStart={() => setStep("PIN_INPUT")}
           />
         )}
@@ -135,7 +137,7 @@ export const ChargerMain = () => {
         {/* ── 화면 2: PIN 입력 ───────────────────────────────────────────────── */}
         {step === "PIN_INPUT" && (
           <KioskPinInput
-            chargerId={chargerId}
+            chargerId={effectiveChargerId}
             chargerType={chargerType}
             onBack={() => setStep("STANDBY")}
           />
@@ -144,7 +146,7 @@ export const ChargerMain = () => {
         {/* ── 화면 3: 충전 중 ────────────────────────────────────────────────── */}
         {step === "CHARGING" && (
           <KioskCharging
-            chargerId={chargerId}
+            chargerId={effectiveChargerId}
             chargerType={chargerType}
             onStop={handleStop}
           />

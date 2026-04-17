@@ -16,11 +16,11 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(
       appearance-none flex-shrink-0 relative outline-none
     `;
 
-    // 2. 상태 및 색상: 체크 시 초록색 배경 + 포커스 링
+    // 2. 상태 및 색상: 체크 시 파란색 배경 + 포커스 링 (디자인 시안 primary: #3B82F6)
     const statusStyle = `
-      border-zinc-300 bg-white
-      checked:bg-green-500 checked:border-green-500 
-      focus:ring-2 focus:ring-green-200 focus:ring-offset-1
+      border-[#DBEAFE] bg-white
+      checked:bg-[#3B82F6] checked:border-[#3B82F6]
+      focus:ring-2 focus:ring-[rgba(59,130,246,0.15)] focus:ring-offset-1
       disabled:bg-zinc-100 disabled:border-zinc-200 disabled:cursor-not-allowed
     `;
     

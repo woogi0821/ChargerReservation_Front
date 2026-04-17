@@ -17,7 +17,6 @@ import ProtectedRoute from "../common/ProtectedRoute";
 import MyPage from "../pages/member/MyPage";
 import Notice from "../pages/notice/Notice";
 
-
 export const AppRouter = () => {
   return (
     <BrowserRouter>
@@ -29,14 +28,15 @@ export const AppRouter = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/reservation" element={<ReservationPage />} />
+          <Route path="/stations" element={<Stations />} />
           <Route path="/reservations" element={<MyPage />} />
           <Route path="/notices" element={<Notice />} />
         </Route>
 
-        {/* 소셜 로그인 콜백 */}
+        {/* 소셜 로그인 콜백 (헤더 불필요) */}
         <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
 
-        {/* SMS 테스트 페이지 (기존 유지) */}
+        {/* SMS 테스트 페이지 */}
         <Route path="/test-sms" element={<Home />} />
 
         {/* ==========================================
@@ -56,10 +56,6 @@ export const AppRouter = () => {
           <Route path="/admin/penalty" element={<AdminPenaltyPage />} />
           <Route path="/admin/inquiry" element={<AdminInquiryPage />} />
         </Route>
-        {/* ==========================================
-            충전소 찾기
-           ========================================== */}
-        <Route path="/stations" element={<Stations />} />
       </Routes>
     </BrowserRouter>
   );

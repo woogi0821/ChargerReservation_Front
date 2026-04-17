@@ -11,6 +11,8 @@ const badgeVariants = cva(
         secondary: "bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-200/80",
         danger: "bg-red-100 text-red-700 border-red-200 hover:bg-red-200/80",
         outline: "bg-transparent border-zinc-300 text-zinc-500 hover:bg-zinc-50",
+        blue: "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200/80",
+        warning: "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200/80",
       },
       size: {
         sm: "px-2 py-0.5 text-[10px]",
@@ -24,6 +26,8 @@ const badgeVariants = cva(
     },
   }
 );
+
+export type BadgeVariant = "primary" | "secondary" | "danger" | "outline" | "blue" | "warning";
 
 interface BadgeProps
   extends HTMLAttributes<HTMLSpanElement>,
