@@ -8,6 +8,7 @@ import type { IToken } from "../../../services/AuthService";
 import AuthService from "../../../services/AuthService";
 import { loginValidation } from "../../../validation/authValidation";
 import { useState } from "react";
+import FindAccountModal from "./FindAccountModal";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -17,6 +18,7 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const { login, closeModal } = useAuthStore();
   const nav = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [isFindModalOpen, setIsFindModalOpen] = useState(false);
 
   const handleLogin = async (data: IMember) => {
     if (isLoading) return;
@@ -37,7 +39,7 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       localStorage.setItem("adminId", String(adminId ?? ""));
       localStorage.setItem("adminRole", adminRole ?? "");
       localStorage.setItem("adminPart", adminPart ?? "");
-      localStorage.setItem("accessToken",  accessToken);
+      localStorage.setItem("accessToken", accessToken);
 
       closeModal();
 
@@ -49,13 +51,19 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     } catch (error: any) {
       console.error("로그인 시도 중 오류 발생:", error);
 
-      if (error.response && error.response.status === 401) {
-        alert("아이디 또는 비밀번호가 일치하지 않습니다.");
+      const serverMessage = error.response?.data;
+
+      if (error.response) {
+        if (error.response.status === 401) {
+          alert(serverMessage || "아이디 또는 비밀번호가 일치하지 않습니다.");
+        } else {
+          alert(
+            serverMessage ||
+              "로그인 중 오류가 발생했습니다. 다시 시도해주세요.",
+          );
+        }
       } else {
-        alert(
-          error.response?.data?.message ||
-            "로그인 중 오류가 발생했습니다. 다시 시도해주세요.",
-        );
+        alert("서버와 통신할 수 없습니다. 네트워크 상태를 확인해주세요.");
       }
     } finally {
       setIsLoading(false);
@@ -100,7 +108,25 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         <Button type="submit" variant="primary" className="w-full py-4 mt-2">
           로그인
         </Button>
+
+        <div className="flex justify-center items-center gap-3 mt-1 text-sm text-zinc-500">
+          <p className="text-center text-sm text-zinc-500">
+            계정을 잊으셨나요?{" "}
+            <button
+              type="button"
+              onClick={() => setIsFindModalOpen(true)}
+              className="text-[#3B82F6] font-bold underline underline-offset-4"
+            >
+              계정 찾기
+            </button>
+          </p>
+        </div>
       </form>
+
+      <FindAccountModal
+        isOpen={isFindModalOpen} 
+        onClose={() => setIsFindModalOpen(false)} 
+      />
 
       <div className="relative flex items-center justify-center my-2">
         <div className="w-full border-t border-zinc-100"></div>

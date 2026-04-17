@@ -5,10 +5,15 @@ import type { IMember } from "../../types/IMember";
 import common from "../../common/commonservice";
 import { useFormik } from "formik";
 import { updateValidation } from "../../validation/memberValidation";
+import { useAuthStore } from "../../store/useAuthStore";
+import { useNavigate } from "react-router-dom";
 
 const MyPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [userInfo, setUserInfo] = useState<IMember | null>(null);
+  const { logout } = useAuthStore();
+  const navigate = useNavigate();
+  
 
   useEffect(() => {
     const fetchMemberInfo = async () => {
@@ -25,6 +30,34 @@ const MyPage = () => {
     };
     fetchMemberInfo();
   }, []);
+
+  const handleWithdraw = async () => {
+    if (!window.confirm("정말 탈퇴하시겠습니까? 탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.")) {
+      return;
+    }
+
+    try {
+      const response = await common.delete("/member/me", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+
+      if (response.status === 200) {
+        alert("회원 탈퇴가 성공적으로 완료되었습니다.");
+        
+        logout();
+        localStorage.removeItem("adminId");
+        localStorage.removeItem("adminRole");
+        localStorage.removeItem("adminPart");
+        
+        navigate("/");
+      }
+    } catch (error: any) {
+      console.error("탈퇴 오류:", error);
+      alert(error.response?.data || "회원 탈퇴 처리 중 오류가 발생했습니다.");
+    }
+  };
 
   const formik = useFormik({
     initialValues: {
@@ -226,10 +259,7 @@ const MyPage = () => {
                 type="button"
                 variant="danger"
                 className="px-8 py-4 text-rose-500 font-bold hover:bg-rose-50 rounded-2xl transition-all"
-                onClick={() => {
-                  if (window.confirm("정말 탈퇴하시겠습니까?"))
-                    console.log("탈퇴");
-                }}
+                onClick={handleWithdraw}
               >
                 회원 탈퇴
               </Button>
