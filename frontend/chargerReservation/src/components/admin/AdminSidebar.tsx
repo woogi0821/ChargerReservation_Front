@@ -22,14 +22,9 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   { label: "문의 관리",   path: "/admin/inquiry" },
 ];
 
-const canAccessMember = (): boolean => {
-  const adminRole = localStorage.getItem("adminRole");
-  const adminPart = localStorage.getItem("adminPart");
-  return adminRole === "SUPER"
-      || adminPart === "MEMBER"
-      || adminPart === "ALL"
-      || adminPart === null;
-};
+const getAdminRole = () => localStorage.getItem("adminRole");
+const getAdminPart = () => localStorage.getItem("adminPart");
+const isSuperRole  = () => getAdminRole() === "SUPER";
 
 export const AdminSidebar = ({
   adminName = "관리자",
@@ -43,10 +38,17 @@ export const AdminSidebar = ({
   const { handleLogout } = useLogout();
 
   const MENU_ITEMS = ALL_MENU_ITEMS.filter((item) => {
-    if (item.path === "/admin/member") {
-      return canAccessMember();
+    switch (item.path) {
+      case "/admin/member":
+        // ✅ 회원 관리 — SUPER / MEMBER / ALL 만 표시
+        return isSuperRole()
+            || getAdminPart() === "MEMBER"
+            || getAdminPart() === "ALL";
+
+      default:
+        // ✅ 나머지 메뉴 — 관리자면 전체 표시
+        return true;
     }
-    return true;
   });
 
   return (
@@ -58,7 +60,7 @@ export const AdminSidebar = ({
       `}
       {...props}
     >
-      {/* ✅ 상단 — ChargeNow 로 변경 */}
+      {/* 상단 — 로고 */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
         <div className="w-1 h-5 bg-blue-700" />
         <span className="text-sm font-semibold tracking-widest text-gray-800">
@@ -89,11 +91,17 @@ export const AdminSidebar = ({
         })}
       </nav>
 
-      {/* 하단 — 관리자 정보 + 로그아웃 */}
+      {/* 하단 — 관리자 정보 + 메인이동 + 로그아웃 */}
       <div className="px-5 py-4 border-t border-gray-100">
-        <p className="text-xs text-gray-500 tracking-wide mb-2">
+        <p className="text-xs text-gray-500 tracking-wide mb-3">
           {adminName}
         </p>
+        <button
+          onClick={() => navigate("/")}
+          className="text-xs text-gray-400 hover:text-blue-700 tracking-wide transition-colors mb-2 block"
+        >
+          메인으로
+        </button>
         <button
           onClick={handleLogout}
           className="text-xs text-gray-400 hover:text-blue-700 tracking-wide transition-colors"

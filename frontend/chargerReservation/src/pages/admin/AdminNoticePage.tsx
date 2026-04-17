@@ -2,10 +2,6 @@ import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 
-// ─────────────────────────────────────────────
-// 타입 정의
-// ─────────────────────────────────────────────
-
 interface Notice {
   noticeId: number;
   title: string;
@@ -22,28 +18,18 @@ interface NoticeForm {
   fixYn: string;
 }
 
-// ─────────────────────────────────────────────
-// 폼 초기값
-// ─────────────────────────────────────────────
-
 const EMPTY_FORM: NoticeForm = {
   title: "",
   content: "",
   fixYn: "N",
 };
 
-// ─────────────────────────────────────────────
-// 권한 체크 — SUPER 만 작성/수정/삭제 가능
-// ─────────────────────────────────────────────
-
+// ✅ 수정 — SUPER 또는 INQUIRY 파트 허용
 const canEditNotice = (): boolean => {
   const adminRole = localStorage.getItem("adminRole");
-  return adminRole === "SUPER";
+  const adminPart = localStorage.getItem("adminPart");
+  return adminRole === "SUPER" || adminPart === "INQUIRY";
 };
-
-// ─────────────────────────────────────────────
-// 컴포넌트
-// ─────────────────────────────────────────────
 
 const AdminNoticePage = () => {
 
@@ -55,8 +41,6 @@ const AdminNoticePage = () => {
   const [form, setForm] = useState<NoticeForm>(EMPTY_FORM);
 
   const hasEditPermission = canEditNotice();
-
-  // ── 공지사항 목록 조회 ───────────────────────
 
   const fetchNotices = async () => {
     try {
@@ -82,8 +66,6 @@ const AdminNoticePage = () => {
     fetchNotices();
   }, []);
 
-  // ── 모달 닫기 ───────────────────────────────
-
   const onCloseModal = () => {
     setModalMode(null);
     setEditNotice(null);
@@ -108,8 +90,6 @@ const AdminNoticePage = () => {
     setModalMode("edit");
   };
 
-  // ── 공지사항 등록 ────────────────────────────
-
   const onAddNotice = async () => {
     if (!form.title.trim() || !form.content.trim()) return;
     try {
@@ -129,8 +109,6 @@ const AdminNoticePage = () => {
       console.error("서버 연결 실패", error);
     }
   };
-
-  // ── 공지사항 수정 ────────────────────────────
 
   const onEditNotice = async () => {
     if (!editNotice || !form.title.trim() || !form.content.trim()) return;
@@ -154,8 +132,6 @@ const AdminNoticePage = () => {
       console.error("서버 연결 실패", error);
     }
   };
-
-  // ── 공지사항 삭제 ────────────────────────────
 
   const onDeleteNotice = async (noticeId: number) => {
     if (!hasEditPermission) return;
@@ -191,7 +167,6 @@ const AdminNoticePage = () => {
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">공지 목록</h2>
             <span className="text-xs text-gray-400">총 {notices.length}건</span>
           </div>
-
           <button
             onClick={onOpenWriteModal}
             disabled={!hasEditPermission}
@@ -245,7 +220,6 @@ const AdminNoticePage = () => {
                     </td>
                     <td className="px-5 py-3 text-gray-500">{notice.writerId}</td>
                     <td className="px-5 py-3 text-gray-500">{notice.insertTime?.slice(0, 10)}</td>
-
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <button
@@ -282,14 +256,17 @@ const AdminNoticePage = () => {
 
       {/* 공지 상세 보기 모달 */}
       {detailNotice && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" onClick={() => setDetailNotice(null)}>
-          <div className="bg-white w-full max-w-lg mx-4 shadow-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center"
+          onClick={() => setDetailNotice(null)}>
+          <div className="bg-white w-full max-w-lg mx-4 shadow-lg"
+            onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-1 h-4 bg-blue-700" />
                 <h3 className="text-sm font-semibold text-gray-700">공지 상세</h3>
               </div>
-              <button onClick={() => setDetailNotice(null)} className="text-gray-300 hover:text-gray-500 transition-colors">✕</button>
+              <button onClick={() => setDetailNotice(null)}
+                className="text-gray-300 hover:text-gray-500 transition-colors">✕</button>
             </div>
             <div className="px-6 py-5">
               <div className="flex items-center gap-2 mb-3">
@@ -303,7 +280,6 @@ const AdminNoticePage = () => {
               </p>
               <p className="text-sm text-gray-600 leading-relaxed">{detailNotice.content}</p>
             </div>
-
             <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
               <button
                 onClick={() => { setDetailNotice(null); onOpenEditModal(detailNotice); }}
@@ -329,8 +305,10 @@ const AdminNoticePage = () => {
 
       {/* 공지 작성 / 수정 모달 */}
       {modalMode !== null && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" onClick={onCloseModal}>
-          <div className="bg-white w-full max-w-lg mx-4 shadow-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center"
+          onClick={onCloseModal}>
+          <div className="bg-white w-full max-w-lg mx-4 shadow-lg"
+            onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-1 h-4 bg-blue-700" />
@@ -338,7 +316,8 @@ const AdminNoticePage = () => {
                   {modalMode === "write" ? "공지 작성" : "공지 수정"}
                 </h3>
               </div>
-              <button onClick={onCloseModal} className="text-gray-300 hover:text-gray-500 transition-colors">✕</button>
+              <button onClick={onCloseModal}
+                className="text-gray-300 hover:text-gray-500 transition-colors">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>

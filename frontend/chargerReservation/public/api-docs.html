@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChargeNow API 문서</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <redoc
+      spec-url="http://localhost:8080/v3/api-docs"
+      expand-responses="200,201"
+      required-props-first="true"
+      sort-props-alphabetically="false"
+      hide-download-button="false"
+      theme='{
+        "colors": {
+          "primary": {
+            "main": "#1D4ED8"
+          }
+        },
+        "typography": {
+          "fontSize": "14px",
+          "fontFamily": "Noto Sans KR, sans-serif",
+          "headings": {
+            "fontFamily": "Noto Sans KR, sans-serif"
+          }
+        },
+        "sidebar": {
+          "width": "260px",
+          "backgroundColor": "#0F172A",
+          "textColor": "#CBD5E1"
+        },
+        "rightPanel": {
+          "backgroundColor": "#1E293B"
+        }
+      }'
+    ></redoc>
+
+    <script src="https://cdn.jsdelivr.net/npm/redoc/bundles/redoc.standalone.js"></script>
+  </body>
+</html>

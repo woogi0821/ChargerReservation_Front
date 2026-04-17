@@ -20,11 +20,11 @@ const penaltyStatusStyles: { [key: string]: { label: string; badge: string } } =
   CANCELED: { label: "취소됨", badge: "bg-blue-50 text-blue-600"  },
 };
 
-// ✅ 수정 — PENALTY 파트 추가
+// ✅ 수정 — ALL 제외 / SUPER 또는 PENALTY 파트만 취소 가능
 const canEditPenalty = (): boolean => {
   const adminRole = localStorage.getItem("adminRole");
   const adminPart = localStorage.getItem("adminPart");
-  return adminRole === "SUPER" || adminPart === "PENALTY" || adminPart === "ALL";
+  return adminRole === "SUPER" || adminPart === "PENALTY";
 };
 
 const AdminPenaltyPage = () => {
@@ -68,7 +68,6 @@ const AdminPenaltyPage = () => {
     if (!window.confirm("정말 패널티를 취소하시겠습니까?")) return;
 
     try {
-      // ✅ 수정 — accessToken 으로 변경
       const token = localStorage.getItem("accessToken");
       const response = await fetch(
         `http://localhost:8080/api/admin/penalties/${penaltyId}`,
