@@ -15,7 +15,7 @@ interface LoginFormProps {
 }
 
 function LoginForm({ onSwitchToSignup }: LoginFormProps) {
-  const { login, closeModal } = useAuthStore();
+  const { login, closeModal, setToastMessage } = useAuthStore();
   const nav = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isFindModalOpen, setIsFindModalOpen] = useState(false);
@@ -29,26 +29,25 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         loginId: data.loginId,
         loginPw: data.loginPw,
       });
-      const { accessToken, memberGrade, adminId, adminRole, adminPart, name } =
+      // ✅ 수정 — memberId 추가
+      const { accessToken, memberGrade, memberId, adminId, adminRole, adminPart, name } =
         response.data as IToken;
 
-      // AT는 메모리(Zustand)에만 저장 — localStorage 금지
       login(memberGrade, accessToken);
 
-      // 어드민 파트 정보는 localStorage 저장 (파트 관리용)
-      localStorage.setItem("adminId",      String(adminId ?? ""));
-      localStorage.setItem("adminRole",    adminRole ?? "");
-      localStorage.setItem("adminPart",    adminPart ?? "");
-      localStorage.setItem("accessToken",  accessToken);
-      localStorage.setItem("adminName",    name ?? ""); // ✅ 추가
+      // ✅ 수정 — memberId 추가
+      localStorage.setItem("memberId",    String(memberId ?? ""));
+      localStorage.setItem("adminId",     String(adminId ?? ""));
+      localStorage.setItem("adminRole",   adminRole ?? "");
+      localStorage.setItem("adminPart",   adminPart ?? "");
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("adminName",   name ?? "");
+
+      setToastMessage(`환영합니다, ${name ?? "관리자"}님! 👋`);
 
       closeModal();
+      nav("/");
 
-      if (memberGrade === "Y") {
-        nav("/admin");
-      } else {
-        nav("/");
-      }
     } catch (error: any) {
       console.error("로그인 시도 중 오류 발생:", error);
 
@@ -125,8 +124,8 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       </form>
 
       <FindAccountModal
-        isOpen={isFindModalOpen} 
-        onClose={() => setIsFindModalOpen(false)} 
+        isOpen={isFindModalOpen}
+        onClose={() => setIsFindModalOpen(false)}
       />
 
       <div className="relative flex items-center justify-center my-2">
