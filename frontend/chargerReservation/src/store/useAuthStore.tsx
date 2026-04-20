@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { IAuthState } from "../types/IAuthState";
 
 export const useAuthStore = create<IAuthState>()(
@@ -13,12 +13,12 @@ export const useAuthStore = create<IAuthState>()(
       toastMessage: null,
 
       login: (grade: string, token: string) => {
-        localStorage.setItem("accessToken", token);
+        // localStorage.setItem("accessToken", token);
         set({ loggedIn: true, memberGrade: grade, accessToken: token });
       },
 
       logout: () => {
-        localStorage.removeItem("accessToken");
+        // localStorage.removeItem("accessToken");
         set({ loggedIn: false, memberGrade: null, activeModal: "NONE", accessToken: null });
       },
 
@@ -41,7 +41,9 @@ export const useAuthStore = create<IAuthState>()(
     }),
     {
       name: "auth-storage",
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
+        accessToken:state.accessToken,
         loggedIn: state.loggedIn,
         memberGrade: state.memberGrade,
       }),

@@ -59,19 +59,22 @@ const onRefreshed = (token: string) => {
 common.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
-
-    // 로그인 자체 실패는 별도 처리
-    if (originalRequest?.url?.includes("/member/login")) {
+    if (axios.isCancel(error)) {
       return Promise.reject(error);
     }
 
-    // 401: AT 만료 → refresh 시도
+    const originalRequest = error.config;
+    const skipUrls = ["/member/login", "/member/find-id", "/member/find-pw", "/member/refresh"];
+    
+    if (skipUrls.some(url => originalRequest?.url?.includes(url))) {
+      return Promise.reject(error); 
+    }
+
+    // 401에러: AT 만료 처리
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       if (isRefreshing) {
-        // 이미 refresh 중이면 완료될 때까지 대기
         return new Promise((resolve) => {
           refreshSubscribers.push((token: string) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -83,7 +86,6 @@ common.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // RT는 httpOnly 쿠키로 자동 전송 — body 불필요
         const res = await axios.post(
           "http://localhost:8080/api/member/refresh",
           {},
@@ -92,28 +94,36 @@ common.interceptors.response.use(
 
         const { accessToken, memberGrade } = res.data;
         useAuthStore.getState().login(memberGrade, accessToken);
-
         onRefreshed(accessToken);
 
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        const decoded = decodeJwt(accessToken);
-        if (decoded.memberId !== undefined) {
-          originalRequest.headers["X-MemberId"] = String(decoded.memberId);
-        }
-
         return common(originalRequest);
-      } catch {
-        // refresh 실패 → 로그아웃
-        useAuthStore.getState().logout();
-        window.location.href = "/";
-        return Promise.reject(error);
+      } catch (refreshError: any) {
+          // refresh 요청 자체가 취소된 경우 로그아웃 시키지 않음
+          if (axios.isCancel(refreshError) || !refreshError.response) {
+            return Promise.reject(refreshError);
+          }
+
+          if (refreshError.response.status === 401 || refreshError.response.status === 403) {
+            useAuthStore.getState().logout();
+          }
+
+          // 실제 인증 만료인 경우에만 로그아웃
+          // useAuthStore.getState().logout();
+          return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
-    const msg = error.response?.data?.message || "오류가 발생했습니다.";
-    alert("[서버 오류] : " + msg);
+    // 실제 서버 응답 에러가 있는 경우에만 에러 메시지 표시
+    if (error.response && !axios.isCancel(error)) {
+      const msg = error.response.data?.message || "오류가 발생했습니다.";
+      if (error.response.status !== 401) {
+        alert("[서버 오류] : " + msg);
+      }
+    }
+
     return Promise.reject(error);
   }
 );
