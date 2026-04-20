@@ -28,7 +28,6 @@ export const AppRouter = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/reservation" element={<ReservationPage />} />
-          <Route path="/stations" element={<Stations />} />
           <Route path="/reservations" element={<MyPage />} />
           <Route path="/notices" element={<Notice />} />
         </Route>
@@ -43,6 +42,10 @@ export const AppRouter = () => {
             2. 독립 영역 (키오스크 — 헤더 없음)
            ========================================== */}
         <Route path="/kiosk" element={<ChargerMain />} />
+        {/* ==========================================
+            충전소찾기 
+           ========================================== */}
+          <Route path="/stations" element={<Stations />} />
 
         {/* ==========================================
             3. 관리자 영역 (ProtectedRoute)

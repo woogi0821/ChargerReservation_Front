@@ -12,12 +12,11 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
   const navigate = useNavigate();
   const [reserveStep, setReserveStep] = useState<'idle' | 'loading' | 'selecting'>('idle');
   const [availableChargers, setAvailableChargers] = useState<Charger[]>([]);
-
-  // ✅ 위에서 내려오는 애니메이션
   const [visible, setVisible] = useState(false);
+
   useEffect(() => {
     if (station) {
-      // 마운트 직후 한 프레임 뒤에 visible = true → transition 발동
+      setVisible(false);
       const t = requestAnimationFrame(() => setVisible(true));
       return () => cancelAnimationFrame(t);
     } else {
@@ -27,6 +26,23 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
 
   if (!station) return null;
 
+  // =============================================
+  // ✅ 길찾기 핸들러 추가
+  // =============================================
+  const handleRouteClick = () => {
+    const { statNm, lat, lng } = station;
+    if (!lat || !lng) {
+      alert("위치 정보(좌표)가 없어 길찾기를 실행할 수 없습니다.");
+      return;
+    }
+    // 카카오맵 길찾기 URL (목적지: 이름, 위도, 경도)
+    const url = `https://map.kakao.com/link/to/${encodeURIComponent(statNm)},${lat},${lng}`;
+    window.open(url, '_blank');
+  };
+
+  // =============================================
+  // 헬퍼 함수들 (비즈니스 로직)
+  // =============================================
   const formatStatusWithIcon = (status: string, type: '급속' | '완속') => {
     if (!status) return null;
     const displayStatus = status.replace('급속 ', '').replace('완속 ', '');
@@ -62,6 +78,9 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
   };
   const hasRestriction = checkRestriction();
 
+  // =============================================
+  // 예약 핸들러
+  // =============================================
   const handleReservationClick = async () => {
     setReserveStep('loading');
     try {
@@ -73,7 +92,8 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
         return;
       }
       const rapidList = available.filter(c => c.chargerTypeNm === '급속');
-      const slowList  = available.filter(c => c.chargerTypeNm === '완속');
+      const slowList = available.filter(c => c.chargerTypeNm === '완속');
+      
       if (rapidList.length > 0 && slowList.length === 0) {
         navigate('/reservation', { state: { selectedCharger: rapidList[0] } });
         return;
@@ -100,9 +120,10 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
   const renderBottomAction = () => {
     if (reserveStep === 'selecting') {
       const rapidChargers = availableChargers.filter(c => c.chargerTypeNm === '급속');
-      const slowChargers  = availableChargers.filter(c => c.chargerTypeNm === '완속');
+      const slowChargers = availableChargers.filter(c => c.chargerTypeNm === '완속');
+      
       return (
-        <div className="p-4 border-t border-gray-100 bg-white space-y-2 shrink-0">
+        <div className="fixed bottom-[60px] left-0 w-full z-[105] bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] p-4 space-y-2 md:static md:shadow-none md:border-t md:p-4">
           <p className="text-xs text-gray-500 text-center font-medium mb-1">충전 방식을 선택해주세요</p>
           <div className="grid grid-cols-2 gap-3">
             {rapidChargers.length > 0 && (
@@ -121,8 +142,14 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
       );
     }
     return (
-      <div className="p-4 border-t border-gray-100 bg-white grid grid-cols-2 gap-3 shrink-0">
-        <button className="bg-gray-100 text-gray-800 py-4 rounded-xl font-bold text-base hover:bg-gray-200 transition-colors">길찾기</button>
+      /* 모바일: fixed로 뷰포트 기준 하단바(60px) 바로 위 고정 / 데스크탑: 일반 흐름 */
+      <div className="fixed bottom-[60px] left-0 w-full z-[105] bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] p-4 grid grid-cols-2 gap-3 md:static md:shadow-none md:border-t md:p-4">
+        <button
+          onClick={handleRouteClick}
+          className="bg-gray-100 text-gray-800 py-4 rounded-xl font-bold text-base hover:bg-gray-200 transition-colors"
+        >
+          길찾기
+        </button>
         <button
           onClick={handleReservationClick}
           disabled={reserveStep === 'loading'}
@@ -136,90 +163,47 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
     );
   };
 
-  // =============================================
-  // 📱 모바일 레이아웃 (하단바 위 ~ 화면 최상단)
-  // =============================================
-const MobileDetail = () => (
-  <div
-    className={`
-      flex flex-col h-full bg-white font-sans
-      /* ✅ 위에서 아래로 내려오는 애니메이션 고정 */
-      transition-transform duration-500 ease-out
-      ${visible ? 'translate-y-0' : '-translate-y-full'}
-    `}
-  >
-    {/* 헤더 */}
-    <div className="px-5 pt-4 pb-3 bg-blue-600 text-white relative shrink-0">
+  // 📱 모바일 레이아웃 (생략 없이 로직 동일)
+  const MobileDetail = () => (
+    <div className={`flex flex-col h-full bg-white font-sans transition-transform duration-500 ease-out ${visible ? 'translate-y-0' : '-translate-y-full'}`}>
+      <div className="px-5 pt-4 pb-3 bg-blue-600 text-white relative shrink-0">
         <button onClick={onClose} className="absolute top-3 right-4 p-1.5 hover:bg-blue-700 rounded-full transition-colors z-10">
           <span className="text-lg text-white">✕</span>
         </button>
-
-        {/* 운영사 */}
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-[10px] font-bold bg-white text-blue-600 px-2 py-0.5 rounded shadow-sm">운영사</span>
           <span className="text-xs font-medium opacity-90">{station.bnm || '정보없음'}</span>
           <span className="ml-auto text-[11px] font-bold bg-blue-700/50 px-2 py-0.5 rounded whitespace-nowrap">{station.distance}km</span>
         </div>
-
-        {/* 1. 충전소명 */}
         <h2 className="text-lg font-bold leading-tight pr-8 mb-0.5">{station.statNm}</h2>
-        {/* 2. 주소 */}
         <p className="text-xs opacity-80 leading-snug">{station.addr}</p>
-        {/* 3. 상세주소 */}
-        {station.location && (
-          <p className="text-[11px] opacity-70 mt-0.5">📍 {station.location}</p>
-        )}
+        {station.location && <p className="text-[11px] opacity-70 mt-0.5">📍 {station.location}</p>}
       </div>
-
-      {/* 스크롤 영역 */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-
-        {/* 4. 실시간 현황 + 요금 한줄 (3개) */}
+      {/* 스크롤 영역: 버튼높이(~90px) + 하단바(60px) 만큼 pb 확보 */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-[150px]">
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="grid grid-cols-3 gap-2">
-            {/* 급속 현황 */}
             <div className="bg-blue-50 rounded-xl p-3 flex flex-col items-center justify-center gap-1 text-blue-700">
               <span className="text-lg">⚡</span>
               <span className="text-[10px] font-bold text-blue-500">급속</span>
-              <span className="text-xs font-black text-center leading-tight">
-                {station.fastChargerStatus
-                  ? station.fastChargerStatus.replace('급속 ', '')
-                  : '정보없음'}
-              </span>
+              <span className="text-xs font-black text-center leading-tight">{station.fastChargerStatus ? station.fastChargerStatus.replace('급속 ', '') : '정보없음'}</span>
             </div>
-
-            {/* 완속 현황 */}
             <div className="bg-green-50 rounded-xl p-3 flex flex-col items-center justify-center gap-1 text-green-700">
               <span className="text-lg">🔌</span>
               <span className="text-[10px] font-bold text-green-500">완속</span>
-              <span className="text-xs font-black text-center leading-tight">
-                {station.slowChargerStatus
-                  ? station.slowChargerStatus.replace('완속 ', '')
-                  : '정보없음'}
-              </span>
+              <span className="text-xs font-black text-center leading-tight">{station.slowChargerStatus ? station.slowChargerStatus.replace('완속 ', '') : '정보없음'}</span>
             </div>
-
-            {/* 요금 */}
             <div className="bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center gap-1">
               <span className="text-lg">💰</span>
               <span className="text-[10px] font-bold text-gray-400">요금</span>
               <div className="text-center">
-                {hasFast && station.currentPrice && station.currentPrice > 0 ? (
-                  <p className="text-xs font-black text-blue-600 leading-tight">{Math.floor(station.currentPrice)}원</p>
-                ) : null}
-                {hasSlow && station.slowPrice && station.slowPrice > 0 ? (
-                  <p className="text-xs font-black text-green-600 leading-tight">{Math.floor(station.slowPrice)}원</p>
-                ) : (
-                  !hasFast || !station.currentPrice ? <p className="text-[10px] text-gray-400 leading-tight">현장확인</p> : null
-                )}
+                {hasFast && station.currentPrice && station.currentPrice > 0 && <p className="text-xs font-black text-blue-600 leading-tight">{Math.floor(station.currentPrice)}원</p>}
+                {hasSlow && station.slowPrice && station.slowPrice > 0 && <p className="text-xs font-black text-green-600 leading-tight">{Math.floor(station.slowPrice)}원</p>}
               </div>
             </div>
           </div>
         </div>
-
-        {/* 시설 정보 (compact) */}
         <div className="px-4 py-3 space-y-2">
-          {/* 이용시간 + 주차 한줄 */}
           <div className="grid grid-cols-2 gap-2">
             <div className="flex items-center gap-2 bg-white border border-gray-100 px-3 py-2.5 rounded-xl shadow-sm">
               <span className="text-base">🔓</span>
@@ -232,43 +216,29 @@ const MobileDetail = () => (
               <span className="text-base">🅿️</span>
               <div>
                 <p className="text-[9px] text-gray-400 font-bold">주차</p>
-                <p className="text-xs font-bold text-gray-700">
-                  {station.limitYn === 'Y' ? '제한' : '가능'} · {station.parkingFree === 'Y' ? '무료' : '유료'}
-                </p>
+                <p className="text-xs font-bold text-gray-700">{station.limitYn === 'Y' ? '제한' : '가능'} · {station.parkingFree === 'Y' ? '무료' : '유료'}</p>
               </div>
             </div>
           </div>
-
-          {/* 이용제한 */}
           <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border ${hasRestriction ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
             <span className="text-base mt-0.5">{hasRestriction ? '⚠️' : '✅'}</span>
             <div>
               <p className={`text-[9px] font-bold uppercase ${hasRestriction ? 'text-red-400' : 'text-green-400'}`}>이용제한</p>
-              <p className={`text-xs font-bold ${hasRestriction ? 'text-red-700' : 'text-green-700'}`}>
-                {hasRestriction ? station.limitDetail : '제한없음'}
-              </p>
+              <p className={`text-xs font-bold ${hasRestriction ? 'text-red-700' : 'text-green-700'}`}>{hasRestriction ? station.limitDetail : '제한없음'}</p>
             </div>
           </div>
         </div>
       </div>
-
-      {/* 5. 길찾기 + 예약하기 한줄 */}
-      {renderBottomAction()}
+      {/* ✅ 버튼 fixed: 뷰포트 기준 하단바(60px) 바로 위에 고정 */}
+      <div className="fixed bottom-[60px] left-0 w-full z-[105] bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+        {renderBottomAction()}
+      </div>
     </div>
   );
 
-  // =============================================
-  // 🖥️ 데스크탑 레이아웃 (기존 그대로)
-  // =============================================
+  // 🖥️ 데스크탑 레이아웃 (생략 없이 로직 동일)
   const DesktopDetail = () => (
-    <div
-      className={`
-        flex flex-col h-full bg-white shadow-2xl border-l border-gray-100 font-sans
-        transition-transform duration-500 ease-out
-        ${visible ? 'translate-x-0' : '-translate-x-full'}
-      `}
-    >
-      {/* 헤더 */}
+    <div className={`flex flex-col h-full bg-white shadow-2xl border-l border-gray-100 font-sans transition-transform duration-500 ease-out ${visible ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="p-6 bg-blue-600 text-white relative shrink-0">
         <button onClick={onClose} className="absolute top-4 right-4 p-2 hover:bg-blue-700 rounded-full transition-colors z-10">
           <span className="text-xl text-white">✕</span>
@@ -291,33 +261,16 @@ const MobileDetail = () => (
           </div>
         </div>
       </div>
-
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* 실시간 현황 */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-[150px]">
         <div className="p-6 border-b border-gray-50">
-          <h3 className="text-sm font-extrabold text-gray-900 mb-4 flex items-center gap-2">
-            <span className="w-1 h-4 bg-blue-600 rounded-full"></span>실시간 충전 현황
-          </h3>
+          <h3 className="text-sm font-extrabold text-gray-900 mb-4 flex items-center gap-2"><span className="w-1 h-4 bg-blue-600 rounded-full"></span>실시간 충전 현황</h3>
           <div className={`flex ${hasFast && hasSlow ? 'flex-row' : 'flex-col items-center'} gap-2.5`}>
-            {hasFast && (
-              <div className={`bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 flex items-center justify-center ${hasFast && hasSlow ? 'flex-1' : 'w-full max-w-[320px]'} text-blue-700`}>
-                {formatStatusWithIcon(station.fastChargerStatus, '급속')}
-              </div>
-            )}
-            {hasSlow && (
-              <div className={`bg-green-50/50 p-4 rounded-xl border border-green-100/50 flex items-center justify-center ${hasFast && hasSlow ? 'flex-1' : 'w-full max-w-[320px]'} text-green-700`}>
-                {formatStatusWithIcon(station.slowChargerStatus, '완속')}
-              </div>
-            )}
+            {hasFast && <div className={`bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 flex items-center justify-center ${hasFast && hasSlow ? 'flex-1' : 'w-full max-w-[320px]'} text-blue-700`}>{formatStatusWithIcon(station.fastChargerStatus, '급속')}</div>}
+            {hasSlow && <div className={`bg-green-50/50 p-4 rounded-xl border border-green-100/50 flex items-center justify-center ${hasFast && hasSlow ? 'flex-1' : 'w-full max-w-[320px]'} text-green-700`}>{formatStatusWithIcon(station.slowChargerStatus, '완속')}</div>}
           </div>
         </div>
-
-        {/* 요금 정보 */}
         <div className="p-6 border-b border-gray-50 bg-gray-50/30">
-          <h3 className="text-sm font-extrabold text-gray-900 mb-4 flex items-center gap-2">
-            <span className="w-1 h-4 bg-blue-600 rounded-full"></span>
-            요금 정보 {station.season && `(${station.season})`}
-          </h3>
+          <h3 className="text-sm font-extrabold text-gray-900 mb-4 flex items-center gap-2"><span className="w-1 h-4 bg-blue-600 rounded-full"></span>요금 정보 {station.season && `(${station.season})`}</h3>
           <div className="space-y-3">
             {hasFast && (
               <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
@@ -327,10 +280,7 @@ const MobileDetail = () => (
                     <p className="text-xs text-gray-400 line-through">작년: {station.lastYearPrice ? `${Math.floor(station.lastYearPrice)}원` : '-'}</p>
                     {renderPriceDiff(station.currentPrice, station.lastYearPrice)}
                   </div>
-                  <p className="text-2xl font-black text-blue-600">
-                    {station.currentPrice ? `${Math.floor(station.currentPrice)}원` : '현장 확인'}
-                    <span className="text-sm font-normal text-gray-400 ml-1">/kWh</span>
-                  </p>
+                  <p className="text-2xl font-black text-blue-600">{station.currentPrice ? `${Math.floor(station.currentPrice)}원` : '현장 확인'}<span className="text-sm font-normal text-gray-400 ml-1">/kWh</span></p>
                 </div>
               </div>
             )}
@@ -342,17 +292,12 @@ const MobileDetail = () => (
                     <p className="text-xs text-gray-400 line-through">작년: {station.slowLastYearPrice ? `${Math.floor(station.slowLastYearPrice)}원` : '-'}</p>
                     {renderPriceDiff(station.slowPrice, station.slowLastYearPrice)}
                   </div>
-                  <p className="text-2xl font-black text-green-600">
-                    {station.slowPrice ? `${Math.floor(station.slowPrice)}원` : '현장 확인'}
-                    <span className="text-sm font-normal text-gray-400 ml-1">/kWh</span>
-                  </p>
+                  <p className="text-2xl font-black text-green-600">{station.slowPrice ? `${Math.floor(station.slowPrice)}원` : '현장 확인'}<span className="text-sm font-normal text-gray-400 ml-1">/kWh</span></p>
                 </div>
               </div>
             )}
           </div>
         </div>
-
-        {/* 상세 시설 정보 */}
         <div className="p-6 space-y-4">
           <div className="flex items-center gap-4 bg-white border border-gray-100 p-4 rounded-xl shadow-sm">
             <span className="text-xl">🔓</span>
@@ -365,34 +310,27 @@ const MobileDetail = () => (
             <span className="text-xl">🅿️</span>
             <div>
               <p className="text-[10px] text-gray-400 font-bold uppercase">Parking</p>
-              <p className="text-sm font-bold text-gray-700">
-                {station.limitYn === 'Y' ? '주차제한' : '주차가능'} | {station.parkingFree === 'Y' ? '무료 주차' : '유료 주차'}
-              </p>
+              <p className="text-sm font-bold text-gray-700">{station.limitYn === 'Y' ? '주차제한' : '주차가능'} | {station.parkingFree === 'Y' ? '무료 주차' : '유료 주차'}</p>
             </div>
           </div>
           <div className={`flex items-start gap-4 p-4 rounded-xl border transition-colors ${hasRestriction ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
             <span className="text-xl">{hasRestriction ? '⚠️' : '✅'}</span>
             <div>
               <p className={`text-[10px] font-bold uppercase ${hasRestriction ? 'text-red-400' : 'text-green-400'}`}>Restriction Detail</p>
-              <p className={`text-sm font-bold ${hasRestriction ? 'text-red-700' : 'text-green-700'}`}>
-                {hasRestriction ? station.limitDetail : '제한사항 없음 (이용가능)'}
-              </p>
+              <p className={`text-sm font-bold ${hasRestriction ? 'text-red-700' : 'text-green-700'}`}>{hasRestriction ? station.limitDetail : '제한사항 없음 (이용가능)'}</p>
             </div>
           </div>
         </div>
       </div>
-
       {renderBottomAction()}
     </div>
   );
 
   return (
     <>
-      {/* 📱 모바일: block / 🖥️ 데스크탑: hidden */}
       <div className="block md:hidden h-full overflow-hidden">
         <MobileDetail />
       </div>
-      {/* 🖥️ 데스크탑: hidden / 📱 모바일: hidden */}
       <div className="hidden md:block h-full overflow-hidden">
         <DesktopDetail />
       </div>

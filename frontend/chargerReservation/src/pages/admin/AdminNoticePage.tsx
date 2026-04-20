@@ -24,7 +24,6 @@ const EMPTY_FORM: NoticeForm = {
   fixYn: "N",
 };
 
-// ✅ 수정 — SUPER 또는 INQUIRY 파트 허용
 const canEditNotice = (): boolean => {
   const adminRole = localStorage.getItem("adminRole");
   const adminPart = localStorage.getItem("adminPart");
@@ -32,9 +31,13 @@ const canEditNotice = (): boolean => {
 };
 
 const AdminNoticePage = () => {
-
+  // ✅ 페이징 처리를 위한 상태 추가
   const [notices, setNotices] = useState<Notice[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+
   const [modalMode, setModalMode] = useState<"write" | "edit" | null>(null);
   const [editNotice, setEditNotice] = useState<Notice | null>(null);
   const [detailNotice, setDetailNotice] = useState<Notice | null>(null);
@@ -42,10 +45,12 @@ const AdminNoticePage = () => {
 
   const hasEditPermission = canEditNotice();
 
-  const fetchNotices = async () => {
+  // ✅ API 호출 시 page 파라미터 적용
+  const fetchNotices = async (page: number = 0) => {
+    setIsLoading(true);
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await fetch("http://localhost:8080/api/admin/notices", {
+      const response = await fetch(`http://localhost:8080/api/admin/notices?page=${page}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -53,8 +58,13 @@ const AdminNoticePage = () => {
         },
       });
       if (!response.ok) return;
+
       const data = await response.json();
-      setNotices(data);
+      // ✅ Page 객체 구조에 맞게 데이터 세팅
+      setNotices(data.content);
+      setTotalPages(data.totalPages);
+      setTotalElements(data.totalElements);
+      setCurrentPage(data.number);
     } catch (error) {
       console.error("서버 연결 실패", error);
     } finally {
@@ -63,7 +73,7 @@ const AdminNoticePage = () => {
   };
 
   useEffect(() => {
-    fetchNotices();
+    fetchNotices(0);
   }, []);
 
   const onCloseModal = () => {
@@ -103,7 +113,7 @@ const AdminNoticePage = () => {
         body: JSON.stringify(form),
       });
       if (!response.ok) return;
-      fetchNotices();
+      fetchNotices(0); // 새 글 작성 시 1페이지로 이동
       onCloseModal();
     } catch (error) {
       console.error("서버 연결 실패", error);
@@ -126,7 +136,7 @@ const AdminNoticePage = () => {
         }
       );
       if (!response.ok) return;
-      fetchNotices();
+      fetchNotices(currentPage); // 수정 후 현재 페이지 유지
       onCloseModal();
     } catch (error) {
       console.error("서버 연결 실패", error);
@@ -149,7 +159,7 @@ const AdminNoticePage = () => {
         }
       );
       if (!response.ok) return;
-      fetchNotices();
+      fetchNotices(currentPage);
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
@@ -157,15 +167,14 @@ const AdminNoticePage = () => {
 
   return (
     <AdminLayout adminName="홍길동">
-
       <AdminPageHeader title="공지사항" />
 
-      <div className="bg-white border border-gray-100 shadow-sm">
+      <div className="bg-white border border-gray-100 shadow-sm mb-10">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-1 h-4 bg-blue-700" />
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">공지 목록</h2>
-            <span className="text-xs text-gray-400">총 {notices.length}건</span>
+            <span className="text-xs text-gray-400">총 {totalElements}건</span>
           </div>
           <button
             onClick={onOpenWriteModal}
@@ -211,7 +220,7 @@ const AdminNoticePage = () => {
                     <td className="px-5 py-3 cursor-pointer" onClick={() => setDetailNotice(notice)}>
                       <div className="flex items-center gap-2">
                         {notice.fixYn === "Y" && (
-                          <span className="px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 font-medium rounded-sm">고정</span>
+                          <span className="px-1.5 py-0.5 text-[10px] bg-blue-50 text-blue-700 font-bold rounded-sm border border-blue-100">고정</span>
                         )}
                         <span className="text-gray-700 font-medium hover:text-blue-700 transition-colors">
                           {notice.title}
@@ -252,6 +261,41 @@ const AdminNoticePage = () => {
             </tbody>
           </table>
         </div>
+
+        {/* ✅ 페이지네이션 UI 추가 */}
+        {!isLoading && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-1 py-6 border-t border-gray-50 bg-white">
+            <button
+              onClick={() => fetchNotices(currentPage - 1)}
+              disabled={currentPage === 0}
+              className="p-2 text-gray-400 hover:text-blue-700 disabled:opacity-30 disabled:hover:text-gray-400"
+            >
+              &lt;
+            </button>
+            
+            {[...Array(totalPages)].map((_, i) => (
+              <button
+                key={i}
+                onClick={() => fetchNotices(i)}
+                className={`w-8 h-8 text-xs rounded-md transition-all ${
+                  currentPage === i
+                    ? "bg-blue-700 text-white font-bold shadow-md shadow-blue-100"
+                    : "text-gray-500 hover:bg-gray-100"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+
+            <button
+              onClick={() => fetchNotices(currentPage + 1)}
+              disabled={currentPage === totalPages - 1}
+              className="p-2 text-gray-400 hover:text-blue-700 disabled:opacity-30 disabled:hover:text-gray-400"
+            >
+              &gt;
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 공지 상세 보기 모달 */}
@@ -271,14 +315,14 @@ const AdminNoticePage = () => {
             <div className="px-6 py-5">
               <div className="flex items-center gap-2 mb-3">
                 {detailNotice.fixYn === "Y" && (
-                  <span className="px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 font-medium rounded-sm">고정</span>
+                  <span className="px-1.5 py-0.5 text-[10px] bg-blue-50 text-blue-700 font-bold rounded-sm border border-blue-100">고정</span>
                 )}
                 <h4 className="text-base font-semibold text-gray-800">{detailNotice.title}</h4>
               </div>
               <p className="text-xs text-gray-400 mb-4">
                 {detailNotice.writerId} · {detailNotice.insertTime?.slice(0, 10)}
               </p>
-              <p className="text-sm text-gray-600 leading-relaxed">{detailNotice.content}</p>
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{detailNotice.content}</p>
             </div>
             <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
               <button
@@ -346,9 +390,9 @@ const AdminNoticePage = () => {
                   id="fixYn"
                   checked={form.fixYn === "Y"}
                   onChange={(e) => setForm((prev) => ({ ...prev, fixYn: e.target.checked ? "Y" : "N" }))}
-                  className="accent-blue-700"
+                  className="w-4 h-4 accent-blue-700"
                 />
-                <label htmlFor="fixYn" className="text-xs text-gray-500 cursor-pointer">
+                <label htmlFor="fixYn" className="text-xs text-gray-500 cursor-pointer select-none">
                   상단 고정 공지로 설정
                 </label>
               </div>
@@ -370,7 +414,6 @@ const AdminNoticePage = () => {
           </div>
         </div>
       )}
-
     </AdminLayout>
   );
 };
