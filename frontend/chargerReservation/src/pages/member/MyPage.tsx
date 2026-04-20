@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Button from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
 import Modal from "../../components/common/Modal";
@@ -151,7 +151,9 @@ function ReservEmpty({ tab }: { tab: ReservTab }) {
 // 메인 페이지
 // ─────────────────────────────────────────
 const MyPage = () => {
-  const [pageTab, setPageTab]           = useState<PageTab>("profile");
+  const location = useLocation();
+  const initialTab = (location.state as { tab?: PageTab } | null)?.tab ?? "profile";
+  const [pageTab, setPageTab]           = useState<PageTab>(initialTab);
   const [isEditing, setIsEditing]       = useState(false);
   const [userInfo, setUserInfo]         = useState<IMember | null>(null);
 

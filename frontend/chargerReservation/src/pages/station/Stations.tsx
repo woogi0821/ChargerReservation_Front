@@ -251,42 +251,34 @@ const Stations = () => {
   </div>
 </div>
 
-        <div
-          className={`
-            bg-white z-[120] overflow-hidden
-            transition-all duration-300 ease-in-out shadow-2xl
-            /* 모바일: 하단바(50vh) 위~최상단, 위에서 슬라이드 */
-            md:absolute md:top-0 md:left-0 md:h-full md:border-r
-            fixed left-0 top-0
-            ${isMobileSheetOpen ? 'bottom-[50vh]' : 'bottom-[60px]'}
-            md:bottom-auto
-            ${selectedStationId ? "w-full md:w-[400px]" : "w-0"}
-          `}
-        >
-          <div className="w-full md:w-[400px] h-full relative">
-            {selectedStationData && (
-              <StationDetail
-                station={selectedStationData}
-                onClose={() => setSelectedStationId(null)}
-              />
-            )}
-          </div>
-        </div>
+<div
+  className={`
+    /* 모바일: 화면 전체, 하단바(z-[110])보다 낮아서 하단바에 가려짐 */
+    fixed inset-0 w-full h-full bg-white
+    transition-transform duration-300 ease-in-out
+    z-[100]
 
-        <button
-          onClick={() => handleSearch(kakaoMap)}
-          className={`
-            absolute left-1/2 -translate-x-1/2 z-[150]
-            px-6 py-2.5 rounded-full font-bold shadow-xl
-            transition-all duration-300 active:scale-95 flex items-center gap-2
-            ${isMobileSheetOpen ? "bottom-[52%]" : "bottom-[80px]"}
-            md:bottom-10
-            bg-white text-blue-600 border-2 border-blue-500
-            hover:bg-blue-50
-          `}
-        >
-          <span className="text-[13px]">🔄 이 지역 재검색</span>
-        </button>
+    /* 데스크탑: 사이드바 형태, x축으로 슬라이드 */
+    md:absolute md:inset-auto md:top-0 md:left-0 md:h-full md:w-[400px] md:z-[120] md:border-r
+
+    /* 모바일 노출: y축 (위→아래), opacity 없이 translate만 사용 */
+    ${selectedStationId ? "translate-y-0 pointer-events-auto" : "-translate-y-full pointer-events-none"}
+
+    /* 데스크탑 노출: x축 (왼쪽→오른쪽) */
+    ${selectedStationId ? "md:translate-x-0 md:translate-y-0 md:visible md:w-[400px]" : "md:-translate-x-full md:translate-y-0 md:invisible md:w-0"}
+  `}
+>
+  <div className="w-full h-full relative flex flex-col">
+    {selectedStationData && (
+      <StationDetail
+        station={selectedStationData}
+        onClose={() => setSelectedStationId(null)}
+      />
+    )}
+  </div>
+</div>
+
+
 
         <div
           className={`

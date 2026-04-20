@@ -3,12 +3,15 @@
 
 import { useState } from "react";
 import { KioskPinPad } from "../KioskPinPad";
-import common from "../../../common/commonservice";
+import kioskService from "../../../services/kioskService";
+
+const PIN_LENGTH = 6;
 
 interface KioskPinInputProps {
-  chargerId: string;
-  chargerType: string;   // "RAPID" | "SLOW"
-  onBack: () => void;
+  statId      : string;
+  chargerId   : string;
+  chargerType : string;   // "RAPID" | "SLOW"
+  onBack      : () => void;
 }
 
 const TYPE_LABEL: Record<string, { label: string; icon: string }> = {
@@ -16,7 +19,7 @@ const TYPE_LABEL: Record<string, { label: string; icon: string }> = {
   SLOW:  { label: "완속충전", icon: "🔌" },
 };
 
-const KioskPinInput = ({ chargerId, chargerType, onBack }: KioskPinInputProps) => {
+const KioskPinInput = ({ statId, chargerId, chargerType, onBack }: KioskPinInputProps) => {
   const [pin, setPin]             = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError]   = useState<boolean>(false);
@@ -24,12 +27,12 @@ const KioskPinInput = ({ chargerId, chargerType, onBack }: KioskPinInputProps) =
 
   const { label, icon } = TYPE_LABEL[chargerType] ?? { label: "충전기", icon: "⚡" };
 
-  // 4자리 완성 → 자동 인증
+  // 6자리 완성 → 자동 인증
   const submitPin = async (pinValue: string) => {
     setIsLoading(true);
     setHasError(false);
     try {
-      await common.post("/kiosk/auth", { chargerId, pin: pinValue });
+      await kioskService.auth({ statId, chargerId, pin: pinValue });
       setIsSuccess(true);
       // 성공 후 WebSocket이 CHARGING 상태를 브로드캐스트 → 부모 KioskPage가 화면 전환
     } catch {
@@ -38,10 +41,6 @@ const KioskPinInput = ({ chargerId, chargerType, onBack }: KioskPinInputProps) =
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handlePinComplete = (completedPin: string) => {
-    submitPin(completedPin);
   };
 
   // ── VERIFYING ──────────────────────────────────────────────────────────────
@@ -80,7 +79,7 @@ const KioskPinInput = ({ chargerId, chargerType, onBack }: KioskPinInputProps) =
 
   // ── PIN 입력 ───────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 flex flex-col items-center gap-6 px-6 py-8">
+    <div className="flex-1 flex flex-col items-center gap-4 px-6 py-6">
       {/* 헤더 */}
       <div className="text-center">
         <p className="text-xs font-bold tracking-widest mb-2" style={{ color: "#00C4A1" }}>
@@ -92,12 +91,12 @@ const KioskPinInput = ({ chargerId, chargerType, onBack }: KioskPinInputProps) =
         </p>
       </div>
 
-      {/* PIN 도트 */}
-      <div className="flex gap-5 items-center my-2">
-        {[0, 1, 2, 3].map((i) => (
+      {/* PIN 도트 (6자리) */}
+      <div className="flex gap-3 items-center my-1">
+        {Array.from({ length: PIN_LENGTH }).map((_, i) => (
           <div
             key={i}
-            className="w-5 h-5 rounded-full transition-all duration-200"
+            className="w-4 h-4 rounded-full transition-all duration-200"
             style={{
               background: i < pin.length ? "#00C4A1" : "rgba(0,196,161,0.15)",
               border: `2px solid ${i < pin.length ? "#00C4A1" : "#D1FAF3"}`,
@@ -119,8 +118,8 @@ const KioskPinInput = ({ chargerId, chargerType, onBack }: KioskPinInputProps) =
       {/* PIN 패드 */}
       <div className="w-full flex justify-center">
         <KioskPinPad
-          maxLength={4}
-          onComplete={handlePinComplete}
+          maxLength={PIN_LENGTH}
+          onComplete={submitPin}
         />
       </div>
 

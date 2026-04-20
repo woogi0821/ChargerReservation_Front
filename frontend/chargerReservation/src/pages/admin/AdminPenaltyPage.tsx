@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { useAuthStore } from "../../store/useAuthStore";
 
 interface Penalty {
   penaltyId: number;
@@ -20,7 +21,6 @@ const penaltyStatusStyles: { [key: string]: { label: string; badge: string } } =
   CANCELED: { label: "취소됨", badge: "bg-blue-50 text-blue-600"  },
 };
 
-// ✅ 수정 — ALL 제외 / SUPER 또는 PENALTY 파트만 취소 가능
 const canEditPenalty = (): boolean => {
   const adminRole = localStorage.getItem("adminRole");
   const adminPart = localStorage.getItem("adminPart");
@@ -28,6 +28,7 @@ const canEditPenalty = (): boolean => {
 };
 
 const AdminPenaltyPage = () => {
+  const { setToastMessage } = useAuthStore(); // ✅ 추가
 
   const [penalties, setPenalties] = useState<Penalty[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,12 +45,7 @@ const AdminPenaltyPage = () => {
           "Authorization": `Bearer ${token}`,
         },
       });
-
-      if (!response.ok) {
-        console.error("패널티 목록 조회 실패");
-        return;
-      }
-
+      if (!response.ok) return;
       const data = await response.json();
       setPenalties(data);
     } catch (error) {
@@ -66,7 +62,6 @@ const AdminPenaltyPage = () => {
   const onCancelPenalty = async (penaltyId: number) => {
     if (!hasEditPermission) return;
     if (!window.confirm("정말 패널티를 취소하시겠습니까?")) return;
-
     try {
       const token = localStorage.getItem("accessToken");
       const response = await fetch(
@@ -79,25 +74,21 @@ const AdminPenaltyPage = () => {
           },
         }
       );
-
-      if (!response.ok) {
-        console.error("패널티 취소 실패");
-        return;
-      }
-
+      if (!response.ok) return;
       fetchPenalties();
+      // ✅ 추가
+      setToastMessage("패널티가 취소되었습니다");
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
   };
 
   return (
-    <AdminLayout adminName="홍길동">
+    <AdminLayout>
 
       <AdminPageHeader title="패널티 관리" />
 
       <div className="bg-white border border-gray-100 shadow-sm">
-
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
           <div className="w-1 h-4 bg-blue-700" />
           <h2 className="text-sm font-semibold text-gray-700 tracking-wide">패널티 목록</h2>

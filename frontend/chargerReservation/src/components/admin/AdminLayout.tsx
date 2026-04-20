@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "./AdminSidebar";
+import { Toast } from "../common/Toast";
+import { useAuthStore } from "../../store/useAuthStore";
+import { useEffect } from "react";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -12,9 +15,19 @@ export const AdminLayout = ({
 }: AdminLayoutProps) => {
 
   const navigate = useNavigate();
+  const { toastMessage, setToastMessage } = useAuthStore();
 
-  // ✅ 수정 — localStorage 에서 실제 이름 꺼내기
   const adminName = localStorage.getItem("adminName") ?? "관리자";
+
+  // ✅ 추가 — 3초 후 자동 제거
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   const onLogout = () => {
     localStorage.clear();
@@ -34,6 +47,16 @@ export const AdminLayout = ({
       <main className="flex-1 p-6 overflow-y-auto">
         {children}
       </main>
+
+      {/* ✅ 추가 — 토스트 메시지 */}
+      <Toast
+        variant="success"
+        position="bottom-center"
+        isVisible={!!toastMessage}
+        onClose={() => setToastMessage(null)}
+      >
+        {toastMessage ?? ""}
+      </Toast>
 
     </div>
   );

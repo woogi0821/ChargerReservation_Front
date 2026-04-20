@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { useAuthStore } from "../../store/useAuthStore";
 
 interface Member {
   memberId: number;
@@ -11,13 +12,19 @@ interface Member {
   status: string;
   penaltyCount: number;
   insertTime: string;
-  memberGrade: string; // ✅ 추가
+  memberGrade: string;
 }
 
 const memberStatusStyles: { [key: string]: { label: string; badge: string } } = {
   ACTIVE:    { label: "정상", badge: "bg-green-50 text-green-600" },
   SUSPENDED: { label: "정지", badge: "bg-amber-50 text-amber-600" },
   WITHDRAWN: { label: "탈퇴", badge: "bg-gray-100 text-gray-400"  },
+};
+
+const statusMessages: { [key: string]: string } = {
+  SUSPENDED: "회원이 정지 처리되었습니다",
+  ACTIVE:    "회원 정지가 해제되었습니다",
+  WITHDRAWN: "회원이 탈퇴 처리되었습니다",
 };
 
 const canEditMember = (): boolean => {
@@ -27,12 +34,13 @@ const canEditMember = (): boolean => {
 };
 
 const AdminMemberPage = () => {
+  const { setToastMessage } = useAuthStore(); // ✅ 추가
 
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [activeTab, setActiveTab] = useState<"NORMAL" | "ADMIN">("NORMAL"); // ✅ 탭 상태
+  const [activeTab, setActiveTab] = useState<"NORMAL" | "ADMIN">("NORMAL");
 
   const hasEditPermission = canEditMember();
 
@@ -77,29 +85,27 @@ const AdminMemberPage = () => {
       if (!response.ok) return;
       fetchMembers();
       setSelectedMember(null);
+      // ✅ 추가
+      setToastMessage(statusMessages[newStatus] ?? "회원 상태가 변경되었습니다");
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
   };
 
-  // ✅ 탭 기준으로 필터링
   const tabFiltered = members.filter((m) =>
     activeTab === "NORMAL" ? m.memberGrade === "N" : m.memberGrade === "Y"
   );
 
-  // ✅ 검색 필터링
   const filteredMembers = tabFiltered.filter((m) =>
     m.name?.includes(searchQuery) || m.email?.includes(searchQuery)
   );
 
   return (
-    <AdminLayout adminName="홍길동">
+    <AdminLayout>
 
       <AdminPageHeader title="회원 관리" />
 
       <div className="bg-white border border-gray-100 shadow-sm">
-
-        {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-1 h-4 bg-blue-700" />
@@ -115,7 +121,6 @@ const AdminMemberPage = () => {
           />
         </div>
 
-        {/* ✅ 탭 */}
         <div className="flex border-b border-gray-100">
           <button
             onClick={() => { setActiveTab("NORMAL"); setSearchQuery(""); }}
@@ -145,7 +150,6 @@ const AdminMemberPage = () => {
           </button>
         </div>
 
-        {/* 테이블 */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -243,7 +247,6 @@ const AdminMemberPage = () => {
         </div>
       </div>
 
-      {/* 회원 상세 모달 */}
       {selectedMember && (
         <div
           className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center"
@@ -258,8 +261,10 @@ const AdminMemberPage = () => {
                 <div className="w-1 h-4 bg-blue-700" />
                 <h3 className="text-sm font-semibold text-gray-700">회원 상세 정보</h3>
               </div>
-              <button onClick={() => setSelectedMember(null)}
-                className="text-gray-300 hover:text-gray-500 transition-colors text-lg">✕</button>
+              <button
+                onClick={() => setSelectedMember(null)}
+                className="text-gray-300 hover:text-gray-500 transition-colors text-lg"
+              >✕</button>
             </div>
 
             <div className="px-6 py-5 space-y-4">

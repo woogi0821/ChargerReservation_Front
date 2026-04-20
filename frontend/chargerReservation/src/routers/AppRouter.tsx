@@ -16,6 +16,8 @@ import Stations from "../pages/station/Stations";
 import ProtectedRoute from "../common/ProtectedRoute";
 import MyPage from "../pages/member/MyPage";
 import Notice from "../pages/notice/Notice";
+import AdminManagePage from "../pages/admin/AdminManagePage";
+import SupportPage from "../pages/support/SupportPage"; // ✅ 추가
 
 export const AppRouter = () => {
   return (
@@ -28,9 +30,9 @@ export const AppRouter = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/reservation" element={<ReservationPage />} />
-          <Route path="/stations" element={<Stations />} />
           <Route path="/reservations" element={<MyPage />} />
           <Route path="/notices" element={<Notice />} />
+          <Route path="/support" element={<SupportPage />} /> {/* ✅ 추가 */}
         </Route>
 
         {/* 소셜 로그인 콜백 (헤더 불필요) */}
@@ -43,6 +45,10 @@ export const AppRouter = () => {
             2. 독립 영역 (키오스크 — 헤더 없음)
            ========================================== */}
         <Route path="/kiosk" element={<ChargerMain />} />
+        {/* ==========================================
+            충전소찾기 
+           ========================================== */}
+          <Route path="/stations" element={<Stations />} />
 
         {/* ==========================================
             3. 관리자 영역 (ProtectedRoute)
@@ -55,6 +61,7 @@ export const AppRouter = () => {
           <Route path="/admin/notice" element={<AdminNoticePage />} />
           <Route path="/admin/penalty" element={<AdminPenaltyPage />} />
           <Route path="/admin/inquiry" element={<AdminInquiryPage />} />
+          <Route path="/admin/managers" element={<AdminManagePage />} />
         </Route>
       </Routes>
     </BrowserRouter>

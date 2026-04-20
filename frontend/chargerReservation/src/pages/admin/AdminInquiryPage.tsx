@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
-
-// ─────────────────────────────────────────────
-// 타입 정의
-// ─────────────────────────────────────────────
+import { useAuthStore } from "../../store/useAuthStore";
 
 interface Inquiry {
   inquiryId: number;
@@ -20,18 +17,10 @@ interface Inquiry {
   insertTime: string;
 }
 
-// ─────────────────────────────────────────────
-// 상태별 스타일
-// ─────────────────────────────────────────────
-
 const inquiryStatusStyles: { [key: string]: { label: string; badge: string } } = {
-  PENDING:  { label: "미답변", badge: "bg-orange-50 text-orange-600" },
-  ANSWERED: { label: "답변완료", badge: "bg-green-50 text-green-600" },
+  PENDING:  { label: "미답변",   badge: "bg-orange-50 text-orange-600" },
+  ANSWERED: { label: "답변완료", badge: "bg-green-50 text-green-600"   },
 };
-
-// ─────────────────────────────────────────────
-// 권한 체크
-// ─────────────────────────────────────────────
 
 const canAnswerInquiry = (): boolean => {
   const adminRole = localStorage.getItem("adminRole");
@@ -39,20 +28,17 @@ const canAnswerInquiry = (): boolean => {
   return adminRole === "SUPER" || adminPart === "INQUIRY" || adminPart === "ALL";
 };
 
-// ─────────────────────────────────────────────
-// 컴포넌트
-// ─────────────────────────────────────────────
-
 const AdminInquiryPage = () => {
+  const { setToastMessage } = useAuthStore();
 
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
   const [answerContent, setAnswerContent] = useState("");
+  // ✅ 추가 — 수정 모드 상태
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const hasAnswerPermission = canAnswerInquiry();
-
-  // ── 문의 목록 조회 ───────────────────────────
 
   const fetchInquiries = async () => {
     try {
@@ -78,16 +64,20 @@ const AdminInquiryPage = () => {
     fetchInquiries();
   }, []);
 
-  // ── 답변 모달 열기 ───────────────────────────
-
   const onOpenAnswerModal = (inquiry: Inquiry) => {
     if (!hasAnswerPermission) return;
     setSelectedInquiry(inquiry);
     setAnswerContent(inquiry.answerContent ?? "");
+    setIsEditMode(false); // ✅ 모달 열 때 수정 모드 초기화
   };
 
-  // ── 답변 등록 ────────────────────────────────
+  const onCloseModal = () => {
+    setSelectedInquiry(null);
+    setAnswerContent("");
+    setIsEditMode(false);
+  };
 
+  // ✅ 답변 등록 (PENDING)
   const onSubmitAnswer = async () => {
     if (!selectedInquiry || !answerContent.trim()) return;
     try {
@@ -104,16 +94,41 @@ const AdminInquiryPage = () => {
         }
       );
       if (!response.ok) return;
-      setSelectedInquiry(null);
-      setAnswerContent("");
+      onCloseModal();
       fetchInquiries();
+      setToastMessage("답변이 등록되었습니다 ✅");
+    } catch (error) {
+      console.error("서버 연결 실패", error);
+    }
+  };
+
+  // ✅ 추가 — 답변 수정 (ANSWERED)
+  const onUpdateAnswer = async () => {
+    if (!selectedInquiry || !answerContent.trim()) return;
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(
+        `http://localhost:8080/api/admin/inquiries/${selectedInquiry.inquiryId}/answer`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({ answerContent }),
+        }
+      );
+      if (!response.ok) return;
+      onCloseModal();
+      fetchInquiries();
+      setToastMessage("답변이 수정되었습니다 ✅");
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
   };
 
   return (
-    <AdminLayout adminName="홍길동">
+    <AdminLayout>
 
       <AdminPageHeader title="문의 관리" />
 
@@ -200,24 +215,27 @@ const AdminInquiryPage = () => {
         </div>
       </div>
 
-      {/* 답변 모달 */}
       {selectedInquiry && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center"
-          onClick={() => setSelectedInquiry(null)}>
-          <div className="bg-white w-full max-w-lg mx-4 shadow-lg"
-            onClick={(e) => e.stopPropagation()}>
-
+        <div
+          className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center"
+          onClick={onCloseModal}
+        >
+          <div
+            className="bg-white w-full max-w-lg mx-4 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-1 h-4 bg-blue-700" />
                 <h3 className="text-sm font-semibold text-gray-700">문의 상세</h3>
               </div>
-              <button onClick={() => setSelectedInquiry(null)}
-                className="text-gray-300 hover:text-gray-500 transition-colors">✕</button>
+              <button
+                onClick={onCloseModal}
+                className="text-gray-300 hover:text-gray-500 transition-colors"
+              >✕</button>
             </div>
 
             <div className="px-6 py-5 space-y-4">
-              {/* 문의 정보 */}
               <div className="flex items-center border-b border-gray-50 pb-3">
                 <span className="w-24 text-xs text-gray-400">카테고리</span>
                 <span className="text-sm text-gray-700">{selectedInquiry.category}</span>
@@ -239,22 +257,33 @@ const AdminInquiryPage = () => {
                 <p className="text-sm text-gray-700 leading-relaxed">{selectedInquiry.content}</p>
               </div>
 
-              {/* 답변 입력 */}
               <div>
-                <label className="block text-xs text-gray-400 tracking-wide mb-1">
-                  답변 내용
-                  {selectedInquiry.status === "ANSWERED" && (
-                    <span className="ml-2 text-green-500">답변완료</span>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-400 tracking-wide">
+                    답변 내용
+                    {selectedInquiry.status === "ANSWERED" && !isEditMode && (
+                      <span className="ml-2 text-green-500">답변완료</span>
+                    )}
+                  </label>
+                  {/* ✅ 추가 — 답변완료 상태일 때 수정 버튼 표시 */}
+                  {selectedInquiry.status === "ANSWERED" && hasAnswerPermission && (
+                    <button
+                      onClick={() => setIsEditMode(!isEditMode)}
+                      className="text-xs text-blue-500 hover:text-blue-700 transition-colors"
+                    >
+                      {isEditMode ? "취소" : "수정하기"}
+                    </button>
                   )}
-                </label>
+                </div>
                 <textarea
                   value={answerContent}
                   onChange={(e) => setAnswerContent(e.target.value)}
-                  disabled={selectedInquiry.status === "ANSWERED"}
-                  placeholder={selectedInquiry.status === "ANSWERED" ? "" : "답변 내용을 입력하세요"}
+                  // ✅ 수정 — PENDING 이거나 수정 모드일 때만 입력 가능
+                  disabled={selectedInquiry.status === "ANSWERED" && !isEditMode}
+                  placeholder={selectedInquiry.status === "PENDING" ? "답변 내용을 입력하세요" : ""}
                   rows={4}
                   className={`w-full border border-gray-200 outline-none p-3 text-sm leading-relaxed resize-none
-                    ${selectedInquiry.status === "ANSWERED"
+                    ${selectedInquiry.status === "ANSWERED" && !isEditMode
                       ? "text-gray-500 bg-gray-50"
                       : "text-gray-700 focus:border-blue-700 placeholder:text-gray-300"
                     }`}
@@ -263,6 +292,7 @@ const AdminInquiryPage = () => {
             </div>
 
             <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
+              {/* ✅ PENDING → 답변 등록 */}
               {selectedInquiry.status === "PENDING" && (
                 <button
                   onClick={onSubmitAnswer}
@@ -271,8 +301,17 @@ const AdminInquiryPage = () => {
                   답변 등록
                 </button>
               )}
+              {/* ✅ 추가 — ANSWERED + 수정 모드 → 수정 완료 */}
+              {selectedInquiry.status === "ANSWERED" && isEditMode && (
+                <button
+                  onClick={onUpdateAnswer}
+                  className="flex-1 py-2 text-sm text-white bg-blue-700 hover:bg-blue-800 transition-colors"
+                >
+                  수정 완료
+                </button>
+              )}
               <button
-                onClick={() => setSelectedInquiry(null)}
+                onClick={onCloseModal}
                 className="flex-1 py-2 text-sm text-gray-400 border border-gray-200 hover:bg-gray-50 transition-colors"
               >
                 닫기
