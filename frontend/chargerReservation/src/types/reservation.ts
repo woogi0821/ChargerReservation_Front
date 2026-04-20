@@ -46,6 +46,7 @@ export interface Charger {
 
 /** 예약 생성 요청 */
 export interface ReservationRequest {
+    statId      : string;
     chargerId   : string;
     carNumber   : string;
     startTime   : string;   // ISO 8601 형식 (e.g. "2026-04-13T14:00:00")
