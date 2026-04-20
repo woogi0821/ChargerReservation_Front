@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { useAuthStore } from "../../store/useAuthStore";
 
 interface Station {
   statId: string;
@@ -38,7 +39,16 @@ const canEditCharger = (): boolean => {
   return adminRole === "SUPER" || adminPart === "CHARGER" || adminPart === "ALL";
 };
 
+const statLabels: { [key: string]: string } = {
+  "1": "통신이상",
+  "2": "충전가능",
+  "3": "충전중",
+  "4": "운영중지",
+  "5": "점검중",
+};
+
 const AdminChargerPage = () => {
+  const { setToastMessage } = useAuthStore(); // ✅ 추가
 
   const [stations, setStations] = useState<Station[]>([]);
   const [chargers, setChargers] = useState<Charger[]>([]);
@@ -51,8 +61,6 @@ const AdminChargerPage = () => {
   const [searchInput, setSearchInput] = useState<string>("");
 
   const hasEditPermission = canEditCharger();
-
-  // ── 충전소 목록 조회 ───────────────────────
 
   const fetchStations = async (searchKeyword?: string) => {
     try {
@@ -79,8 +87,6 @@ const AdminChargerPage = () => {
       setIsLoadingStations(false);
     }
   };
-
-  // ── 충전기 목록 조회 ───────────────────────
 
   const fetchChargers = async (statId?: string) => {
     try {
@@ -111,8 +117,6 @@ const AdminChargerPage = () => {
     fetchChargers();
   }, []);
 
-  // ── 검색 ────────────────────────────────────
-
   const onSearch = () => {
     setKeyword(searchInput);
     fetchStations(searchInput);
@@ -129,8 +133,6 @@ const AdminChargerPage = () => {
     fetchChargers();
   };
 
-  // ── 충전소 필터 클릭 ───────────────────────
-
   const onFilterStation = (statId: string) => {
     if (selectedStatId === statId) {
       setSelectedStatId(null);
@@ -140,8 +142,6 @@ const AdminChargerPage = () => {
       fetchChargers(statId);
     }
   };
-
-  // ── 충전기 상태 변경 ───────────────────────
 
   const onUpdateStat = async () => {
     if (!editCharger) return;
@@ -160,6 +160,8 @@ const AdminChargerPage = () => {
       if (!response.ok) return;
       setEditCharger(null);
       fetchChargers(selectedStatId ?? undefined);
+      // ✅ 추가
+      setToastMessage(`충전기 상태가 "${statLabels[newStat]}" 으로 변경되었습니다`);
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
@@ -170,11 +172,10 @@ const AdminChargerPage = () => {
   const stat4Count = chargers.filter((c) => c.stat?.trim() === "4").length;
 
   return (
-    <AdminLayout adminName="홍길동">
+    <AdminLayout>
 
       <AdminPageHeader title="충전소 / 충전기 관리" />
 
-      {/* 충전소 목록 */}
       <div className="bg-white border border-gray-100 shadow-sm mb-6">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
@@ -182,13 +183,9 @@ const AdminChargerPage = () => {
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">충전소 목록</h2>
             <span className="text-xs text-gray-400">총 {stations.length}개소</span>
             {keyword && (
-              <span className="text-xs text-blue-600">
-                "{keyword}" 검색 결과
-              </span>
+              <span className="text-xs text-blue-600">"{keyword}" 검색 결과</span>
             )}
           </div>
-
-          {/* 검색창 */}
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -215,7 +212,6 @@ const AdminChargerPage = () => {
           </div>
         </div>
 
-        {/* 충전소 테이블 — 높이 고정 + 내부 스크롤 */}
         <div className="overflow-x-auto">
           <div className="max-h-64 overflow-y-auto">
             <table className="w-full text-sm">
@@ -231,15 +227,11 @@ const AdminChargerPage = () => {
               <tbody>
                 {isLoadingStations ? (
                   <tr>
-                    <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-300">
-                      불러오는 중...
-                    </td>
+                    <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-300">불러오는 중...</td>
                   </tr>
                 ) : stations.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-300">
-                      검색 결과가 없습니다
-                    </td>
+                    <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-300">검색 결과가 없습니다</td>
                   </tr>
                 ) : (
                   stations.map((station) => (
@@ -269,7 +261,6 @@ const AdminChargerPage = () => {
         </div>
       </div>
 
-      {/* 충전기 현황 */}
       <div className="bg-white border border-gray-100 shadow-sm">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-4">
@@ -294,7 +285,6 @@ const AdminChargerPage = () => {
           </div>
         </div>
 
-        {/* 충전기 테이블 — 높이 고정 + 내부 스크롤 */}
         <div className="overflow-x-auto">
           <div className="max-h-96 overflow-y-auto">
             <table className="w-full text-sm">
@@ -311,17 +301,12 @@ const AdminChargerPage = () => {
               <tbody>
                 {isLoadingChargers ? (
                   <tr>
-                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-300">
-                      불러오는 중...
-                    </td>
+                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-300">불러오는 중...</td>
                   </tr>
                 ) : chargers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-300">
-                      {selectedStatId
-                        ? "해당 충전소의 충전기가 없습니다"
-                        : "충전소를 선택하면 충전기가 표시됩니다"
-                      }
+                      {selectedStatId ? "해당 충전소의 충전기가 없습니다" : "충전소를 선택하면 충전기가 표시됩니다"}
                     </td>
                   </tr>
                 ) : (
@@ -363,7 +348,6 @@ const AdminChargerPage = () => {
         </div>
       </div>
 
-      {/* 충전기 상태 변경 모달 */}
       {editCharger && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" onClick={() => setEditCharger(null)}>
           <div className="bg-white w-full max-w-sm mx-4 shadow-lg" onClick={(e) => e.stopPropagation()}>

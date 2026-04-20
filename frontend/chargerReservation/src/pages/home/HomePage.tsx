@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import Button from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
 import { Badge } from "../../components/common/badge";
-import { Toast } from "../../components/common/Toast";
 import { useAuthStore } from "../../store/useAuthStore";
 import { stationService } from "../../services/stationService";
 
@@ -17,10 +16,13 @@ interface StationCard {
   markerColor: string;
 }
 
+// ✅ 수정 — chargingCount / reservedCount 추가
 interface StationStats {
   totalStations: number;
   totalChargers: number;
   availableChargers: number;
+  chargingCount: number;
+  reservedCount: number;
 }
 
 const getStationStatus = (markerColor: string): "available" | "busy" | "full" => {
@@ -85,7 +87,6 @@ const DEFAULT_LNG = 126.9780;
 export const HomePage = () => {
   const [searchKeyword, setSearchKeyword] = useState("");
   const { loggedIn, setActiveModal } = useAuthStore();
-  const [toastVisible, setToastVisible] = useState(false);
   const navigate = useNavigate();
 
   const [stations, setStations] = useState<StationCard[]>([]);
@@ -129,7 +130,6 @@ export const HomePage = () => {
     }
   }, []);
 
-  // ✅ 수정 — 검색어를 state 로 넘기며 충전소 찾기 페이지로 이동
   const handleSearch = () => {
     if (!searchKeyword.trim()) return;
     navigate("/stations", { state: { keyword: searchKeyword } });
@@ -142,12 +142,10 @@ export const HomePage = () => {
           SECTION 1 : 히어로
           ===================================================== */}
       <section className="px-6 py-20 relative overflow-hidden">
-        <div className="absolute top-[-80px] left-[-80px] w-96 h-96 bg-[#DBEAFE] rounded-full blur-3xl opacity-60 pointer-events-none" />
-        <div className="absolute bottom-[-60px] right-[300px] w-72 h-72 bg-[#FDE68A] rounded-full blur-3xl opacity-40 pointer-events-none" />
+        <div className="absolute -top-20 -left-20 w-96 h-96 bg-[#DBEAFE] rounded-full blur-3xl opacity-60 pointer-events-none" />
 
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-12">
 
-          {/* 왼쪽 텍스트 영역 */}
           <div className="flex flex-col gap-6 flex-1">
             <div className="inline-flex items-center gap-2 bg-white border border-[#DBEAFE] rounded-full px-4 py-1.5 w-fit shadow-sm">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
@@ -186,7 +184,6 @@ export const HomePage = () => {
               </Button>
             </div>
 
-            {/* ✅ 수정 — 태그 클릭 시 바로 이동 */}
             <div className="flex gap-2 flex-wrap">
               {["강남", "서초", "급속 충전", "24시간"].map((tag) => (
                 <Badge
@@ -235,8 +232,7 @@ export const HomePage = () => {
             </div>
           </div>
 
-          {/* 오른쪽 충전소 카드 */}
-          <div className="w-[420px] shrink-0 bg-white rounded-2xl shadow-[0_4px_32px_rgba(59,130,246,0.12)] border border-[#DBEAFE] overflow-hidden">
+          <div className="w-105 shrink-0 bg-white rounded-2xl shadow-[0_4px_32px_rgba(59,130,246,0.12)] border border-[#DBEAFE] overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#DBEAFE]">
               <span className="font-bold text-[#0F172A] text-sm">내 주변 충전소</span>
               <span className="flex items-center gap-1.5 text-xs text-blue-500 font-medium">
@@ -281,7 +277,6 @@ export const HomePage = () => {
               </button>
             </div>
           </div>
-
         </div>
       </section>
 
@@ -380,6 +375,7 @@ export const HomePage = () => {
               ))
             ) : (
               <>
+                {/* 이용 가능 */}
                 <div className="bg-white rounded-2xl p-5 border border-[#DBEAFE] shadow-sm">
                   <div className="flex items-center justify-between mb-3">
                     <div className="w-10 h-10 rounded-xl bg-[#EFF6FF] flex items-center justify-center text-lg">✅</div>
@@ -401,22 +397,29 @@ export const HomePage = () => {
                   </div>
                 </div>
 
+                {/* ✅ 수정 — 충전 중 실제 데이터 */}
                 <div className="bg-white rounded-2xl p-5 border border-[#DBEAFE] shadow-sm">
                   <div className="flex items-center justify-between mb-3">
                     <div className="w-10 h-10 rounded-xl bg-[#FFF7ED] flex items-center justify-center text-lg">⚡</div>
-                    <span className="text-xs text-gray-400 font-medium">±0</span>
+                    <span className="text-xs text-gray-400 font-medium">LIVE</span>
                   </div>
                   <div className="text-3xl font-black text-[#F97316] mb-1">
-                    {stats
-                      ? Math.round(stats.totalChargers * 0.08).toLocaleString()
-                      : "-"}
+                    {stats?.chargingCount?.toLocaleString() ?? "-"}
                   </div>
                   <div className="text-sm text-[#64748B]">충전 중</div>
                   <div className="mt-3 h-1.5 bg-[#FFF7ED] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#F97316] rounded-full" style={{ width: "8%" }} />
+                    <div
+                      className="h-full bg-[#F97316] rounded-full"
+                      style={{
+                        width: stats
+                          ? `${Math.round((stats.chargingCount / stats.totalChargers) * 100)}%`
+                          : "0%"
+                      }}
+                    />
                   </div>
                 </div>
 
+                {/* 이용 불가 */}
                 <div className="bg-white rounded-2xl p-5 border border-[#DBEAFE] shadow-sm">
                   <div className="flex items-center justify-between mb-3">
                     <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] flex items-center justify-center text-lg">🚫</div>
@@ -440,19 +443,25 @@ export const HomePage = () => {
                   </div>
                 </div>
 
+                {/* ✅ 수정 — 예약 중 실제 데이터 */}
                 <div className="bg-white rounded-2xl p-5 border border-[#DBEAFE] shadow-sm">
                   <div className="flex items-center justify-between mb-3">
                     <div className="w-10 h-10 rounded-xl bg-[#EFF6FF] flex items-center justify-center text-lg">📋</div>
-                    <span className="text-xs text-blue-400 font-medium">+2</span>
+                    <span className="text-xs text-blue-400 font-medium">LIVE</span>
                   </div>
                   <div className="text-3xl font-black text-[#6366F1] mb-1">
-                    {stats
-                      ? Math.round(stats.totalChargers * 0.03).toLocaleString()
-                      : "-"}
+                    {stats?.reservedCount?.toLocaleString() ?? "-"}
                   </div>
                   <div className="text-sm text-[#64748B]">예약 중</div>
                   <div className="mt-3 h-1.5 bg-[#EFF6FF] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#6366F1] rounded-full" style={{ width: "3%" }} />
+                    <div
+                      className="h-full bg-[#6366F1] rounded-full"
+                      style={{
+                        width: stats
+                          ? `${Math.round((stats.reservedCount / stats.totalChargers) * 100)}%`
+                          : "0%"
+                      }}
+                    />
                   </div>
                 </div>
               </>
@@ -465,7 +474,7 @@ export const HomePage = () => {
           SECTION 5 : 하단 CTA 배너
           ===================================================== */}
       {!loggedIn && (
-        <section className="bg-gradient-to-r from-[#1D4ED8] to-[#3B82F6] py-16 px-6 text-center text-white">
+        <section className="bg-linear-to-r from-[#1D4ED8] to-[#3B82F6] py-16 px-6 text-center text-white">
           <h2 className="text-3xl font-black mb-3">지금 바로 시작하세요</h2>
           <p className="text-blue-100 mb-8">회원가입 후 첫 충전 요금 10% 할인</p>
           <div className="flex gap-3 justify-center">
@@ -528,15 +537,6 @@ export const HomePage = () => {
           </div>
         </div>
       </footer>
-
-      <Toast
-        variant="success"
-        position="top-right"
-        isVisible={toastVisible}
-        onClose={() => setToastVisible(false)}
-      >
-        📍 현재 위치에서 가장 가까운 충전소를 찾는 중입니다...
-      </Toast>
     </div>
   );
 };

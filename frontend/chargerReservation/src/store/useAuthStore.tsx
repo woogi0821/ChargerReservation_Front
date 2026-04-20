@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { IAuthState } from "../types/IAuthState";
 
 export const useAuthStore = create<IAuthState>()(
@@ -9,15 +9,16 @@ export const useAuthStore = create<IAuthState>()(
       memberGrade: null,
       activeModal: "NONE",
       accessToken: localStorage.getItem("accessToken") || null,
+      // ✅ 추가
+      toastMessage: null,
 
-      // grade + token 함께 저장
       login: (grade: string, token: string) => {
-        localStorage.setItem("accessToken", token);
+        // localStorage.setItem("accessToken", token);
         set({ loggedIn: true, memberGrade: grade, accessToken: token });
       },
 
       logout: () => {
-        localStorage.removeItem("accessToken");
+        // localStorage.removeItem("accessToken");
         set({ loggedIn: false, memberGrade: null, activeModal: "NONE", accessToken: null });
       },
 
@@ -31,12 +32,18 @@ export const useAuthStore = create<IAuthState>()(
 
       closeModal: () => {
         set({ activeModal: "NONE" });
-      }
+      },
+
+      // ✅ 추가
+      setToastMessage: (msg: string | null) => {
+        set({ toastMessage: msg });
+      },
     }),
     {
       name: "auth-storage",
-      // loggedIn, memberGrade만 localStorage에 저장 — accessToken은 절대 저장 안 함
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
+        accessToken:state.accessToken,
         loggedIn: state.loggedIn,
         memberGrade: state.memberGrade,
       }),
