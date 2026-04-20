@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { useAuthStore } from "../../store/useAuthStore";
 
 interface Reservation {
   reservationId: number;
@@ -18,7 +19,6 @@ interface FilterTab {
   label: string;
 }
 
-// ✅ NO_SHOW 로 수정
 const FILTER_TABS: FilterTab[] = [
   { value: "all",       label: "전체"   },
   { value: "RESERVED",  label: "예정"   },
@@ -28,7 +28,6 @@ const FILTER_TABS: FilterTab[] = [
   { value: "NO_SHOW",   label: "노쇼"   },
 ];
 
-// ✅ NO_SHOW 로 수정
 const reservationStatusStyles: { [key: string]: { label: string; badge: string } } = {
   RESERVED:  { label: "예정",   badge: "bg-blue-50 text-blue-600"     },
   CHARGING:  { label: "진행중", badge: "bg-green-50 text-green-600"   },
@@ -44,6 +43,7 @@ const canEditReservation = (): boolean => {
 };
 
 const AdminReservationPage = () => {
+  const { setToastMessage } = useAuthStore(); // ✅ 추가
 
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [activeFilter, setActiveFilter] = useState<string>("all");
@@ -61,12 +61,7 @@ const AdminReservationPage = () => {
           "Authorization": `Bearer ${token}`,
         },
       });
-
-      if (!response.ok) {
-        console.error("예약 목록 조회 실패");
-        return;
-      }
-
+      if (!response.ok) return;
       const data = await response.json();
       setReservations(data);
     } catch (error) {
@@ -83,7 +78,6 @@ const AdminReservationPage = () => {
   const onForceCancel = async (reservationId: number) => {
     if (!hasEditPermission) return;
     if (!window.confirm("정말 강제 취소하시겠습니까?")) return;
-
     try {
       const token = localStorage.getItem("accessToken");
       const response = await fetch(
@@ -96,13 +90,10 @@ const AdminReservationPage = () => {
           },
         }
       );
-
-      if (!response.ok) {
-        console.error("예약 강제취소 실패");
-        return;
-      }
-
+      if (!response.ok) return;
       fetchReservations();
+      // ✅ 추가
+      setToastMessage("예약이 강제취소 되었습니다");
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
@@ -113,7 +104,7 @@ const AdminReservationPage = () => {
     : reservations.filter((r) => r.status === activeFilter);
 
   return (
-    <AdminLayout adminName="홍길동">
+    <AdminLayout>
 
       <AdminPageHeader title="예약 관리" />
 
@@ -126,7 +117,6 @@ const AdminReservationPage = () => {
           </div>
         </div>
 
-        {/* 필터 탭 */}
         <div className="flex border-b border-gray-100">
           {FILTER_TABS.map((tab) => (
             <button
@@ -149,7 +139,6 @@ const AdminReservationPage = () => {
           ))}
         </div>
 
-        {/* 예약 테이블 */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

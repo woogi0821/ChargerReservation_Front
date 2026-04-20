@@ -8,9 +8,10 @@ export const useAuthStore = create<IAuthState>()(
       loggedIn: false,
       memberGrade: null,
       activeModal: "NONE",
-      accessToken: null,
+      accessToken: localStorage.getItem("accessToken") || null,
+      // ✅ 추가
+      toastMessage: null,
 
-      // grade + token 함께 저장
       login: (grade: string, token: string) => {
         // localStorage.setItem("accessToken", token);
         set({ loggedIn: true, memberGrade: grade, accessToken: token });
@@ -31,7 +32,12 @@ export const useAuthStore = create<IAuthState>()(
 
       closeModal: () => {
         set({ activeModal: "NONE" });
-      }
+      },
+
+      // ✅ 추가
+      setToastMessage: (msg: string | null) => {
+        set({ toastMessage: msg });
+      },
     }),
     {
       name: "auth-storage",

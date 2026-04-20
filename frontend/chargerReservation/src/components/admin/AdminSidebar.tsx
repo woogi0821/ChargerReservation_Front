@@ -20,6 +20,7 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   { label: "공지사항",    path: "/admin/notice" },
   { label: "패널티 관리", path: "/admin/penalty" },
   { label: "문의 관리",   path: "/admin/inquiry" },
+  { label: "관리자 관리", path: "/admin/managers" }, // ✅ 추가
 ];
 
 const getAdminRole = () => localStorage.getItem("adminRole");
@@ -40,13 +41,17 @@ export const AdminSidebar = ({
   const MENU_ITEMS = ALL_MENU_ITEMS.filter((item) => {
     switch (item.path) {
       case "/admin/member":
-        // ✅ 회원 관리 — SUPER / MEMBER / ALL 만 표시
+        // 회원 관리 — SUPER / MEMBER / ALL 만 표시
         return isSuperRole()
             || getAdminPart() === "MEMBER"
             || getAdminPart() === "ALL";
 
+      case "/admin/managers":
+        // ✅ 관리자 관리 — SUPER 만 표시
+        return isSuperRole();
+
       default:
-        // ✅ 나머지 메뉴 — 관리자면 전체 표시
+        // 나머지 메뉴 — 관리자면 전체 표시
         return true;
     }
   });
