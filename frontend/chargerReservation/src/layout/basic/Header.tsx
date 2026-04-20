@@ -46,7 +46,12 @@ const Header = () => {
         );
       }
       setIsNotiOpen(false);
-      navigate(noti.targetUrl);
+      // /reservations 는 마이페이지 내 예약 탭으로 이동
+      if (noti.targetUrl === "/reservations" || noti.targetUrl.startsWith("/reservations")) {
+        navigate("/mypage", { state: { tab: "reservations" } });
+      } else {
+        navigate(noti.targetUrl);
+      }
     } catch (error) {
       console.error("알림 처리 에러:", error);
     }

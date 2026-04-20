@@ -83,6 +83,7 @@ export const ReservationPage = () => {
             const startTime = getFutureTime(15);
 
             const requestData: ReservationRequest = {
+                statId:      selectedCharger.statId,
                 chargerId:   selectedCharger.chgerId,
                 carNumber:   carNumber.replace(/\s/g, ""),
                 startTime,
@@ -206,7 +207,7 @@ export const ReservationPage = () => {
                 isOpen={pinModal.isOpen}
                 onClose={() => {
                     pinModal.close();
-                    navigate("/reservations");
+                    navigate("/mypage", { state: { tab: "reservations" } });
                 }}
                 title="예약 완료 🎉"
                 variant="primary"
@@ -256,7 +257,7 @@ export const ReservationPage = () => {
                             className="w-full"
                             onClick={() => {
                                 pinModal.close();
-                                navigate("/reservations");
+                                navigate("/mypage", { state: { tab: "reservations" } });
                             }}
                         >
                             내 예약 확인하기

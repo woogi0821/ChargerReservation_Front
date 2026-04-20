@@ -41,7 +41,7 @@ export const ChargerMain = () => {
   // ── 충전 강제 종료 ───────────────────────────────────────────────────────
   const handleStop = async () => {
     try {
-      await kioskService.stop(chargerId);
+      await kioskService.stop(statId, effectiveChargerId);
     } catch {
       // 서버 오류여도 DONE으로 전환
     } finally {
@@ -137,6 +137,7 @@ export const ChargerMain = () => {
         {/* ── 화면 2: PIN 입력 ───────────────────────────────────────────────── */}
         {step === "PIN_INPUT" && (
           <KioskPinInput
+            statId={statId}
             chargerId={effectiveChargerId}
             chargerType={chargerType}
             onBack={() => setStep("STANDBY")}
