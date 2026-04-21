@@ -1,4 +1,4 @@
-import { useState, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { useChargerSearch } from '../../hook/useChargerSearch';
 
 interface StationSidebarProps {
@@ -23,19 +23,44 @@ interface StationSidebarProps {
   onHoverStation: (id: string | null) => void;
   mapCenter: { lat: number; lng: number };
   onSelectStation: (id: string) => void;
+  selectedStationId: string | null; // ✅ 추가
 }
 
 const StationSidebar = ({
   stations, setSearchResults, keyword, setKeyword, isSearchMode, setIsSearchMode,
   isLoading, speedFilter, setSpeedFilter, statusFilter, setStatusFilter,
   isParkingAvailable, setIsParkingAvailable, isParkingFree, setIsParkingFree,
-  isNoRestriction, setIsNoRestriction, onHoverStation, onSelectStation, mapCenter
+  isNoRestriction, setIsNoRestriction, onHoverStation, onSelectStation, mapCenter,
+  selectedStationId // ✅ 추가
 }: StationSidebarProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map()); // ✅ 각 아이템 ref
   const { isLoading: isSearching, executeSearch } = useChargerSearch();
   
-  // ✅ 필터 접힘 상태 (기본값 접힘)
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+
+  
+
+  // ✅ selectedStationId 바뀌면 해당 아이템으로 자동 스크롤
+  useEffect(() => {
+    if (!selectedStationId) return;
+    const el = itemRefs.current.get(selectedStationId);
+    if (el && scrollRef.current) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [selectedStationId]);
+
+  useEffect(() => {
+    
+  if (scrollRef.current) {
+    // 즉시 위로 올리고 싶으면 behavior: 'auto'
+    // 부드럽게 올리고 싶으면 behavior: 'smooth'
+    scrollRef.current.scrollTo({
+      top: 0,
+      behavior: 'auto' 
+    });
+  }
+}, [stations]); // 👈 stations 데이터가 바뀔 때마다 실행
 
   const handleExecuteSearch = async () => {
     setIsSearchMode(true);
@@ -43,34 +68,36 @@ const StationSidebar = ({
     setSearchResults(res || []);
   };
 
-  const renderPrices = (s: any) => {
-    const hasFast = s.fastChargerStatus && !s.fastChargerStatus.includes('0/0');
-    const hasSlow = s.slowChargerStatus && !s.slowChargerStatus.includes('0/0');
-    const priceElements = [];
+const renderPrices = (s: any) => {
+  const hasFast = s.fastChargerStatus && !s.fastChargerStatus.includes('0/0');
+  const hasSlow = s.slowChargerStatus && !s.slowChargerStatus.includes('0/0');
+  const priceElements = [];
 
-    if (hasFast) {
-      priceElements.push(
-        <div key="fast" className="flex flex-col items-end">
-          <span className="text-[9px] text-blue-500 font-bold mb-[-3px]">급속</span>
-          <div className="text-blue-600 font-extrabold text-[14px]">
-            {s.currentPrice && s.currentPrice > 0 ? Math.floor(s.currentPrice) : '현장확인'}
-            <span className="text-[9px] font-normal text-gray-400 ml-0.5">원</span>
-          </div>
+  if (hasFast) {
+    priceElements.push(
+      <div key="fast" className="flex flex-col items-end">
+        <span className="text-[9px] text-blue-500 font-bold mb-[-3px]">급속</span>
+        {/* 목록에서는 깔끔하게 요금 정보만 노출 */}
+        <div className="text-blue-600 font-extrabold text-[14px]">
+          {s.currentPrice && s.currentPrice > 0 ? Math.floor(s.currentPrice) : '현장확인'}
+          <span className="text-[9px] font-normal text-gray-400 ml-0.5">원</span>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    if (hasSlow) {
-      priceElements.push(
-        <div key="slow" className="flex flex-col items-end">
-          <span className="text-[9px] text-green-500 font-bold mb-[-3px]">완속</span>
-          <div className="text-green-600 font-extrabold text-[14px]">
-            {s.slowPrice && s.slowPrice > 0 ? Math.floor(s.slowPrice) : '현장확인'}
-            <span className="text-[9px] font-normal text-gray-400 ml-0.5">원</span>
-          </div>
+  if (hasSlow) {
+    priceElements.push(
+      <div key="slow" className="flex flex-col items-end">
+        <span className="text-[9px] text-green-500 font-bold mb-[-3px]">완속</span>
+        {/* 목록에서는 깔끔하게 요금 정보만 노출 */}
+        <div className="text-green-600 font-extrabold text-[14px]">
+          {s.slowPrice && s.slowPrice > 0 ? Math.floor(s.slowPrice) : '현장확인'}
+          <span className="text-[9px] font-normal text-gray-400 ml-0.5">원</span>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
     return priceElements.length === 0 ? (
       <span className="text-gray-400 text-[11px]">요금 정보 없음</span>
@@ -133,7 +160,7 @@ const StationSidebar = ({
             <div className="space-y-2.5">
               <label className="text-[11px] font-bold text-gray-400 tracking-wide ml-1">이용 상태</label>
               <div className="flex gap-2">
-                {['전체', '여유', '혼잡'].map((t) => (
+                {['전체', '여유', '보통'].map((t) => (
                   <button key={t} onClick={() => setStatusFilter(t)} className={`px-5 py-2 rounded-full text-xs font-semibold border transition-all ${statusFilter === t ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100' : 'bg-white text-gray-500 border-gray-200'}`}> {t} </button>
                 ))}
               </div>
@@ -171,8 +198,20 @@ const StationSidebar = ({
         ) : (
           stations.map((s: any, i: number) => {
             const sid = s.statId || s.chargerId;
+            const isSelected = selectedStationId === sid;
             return (
-              <div key={`${sid}-${i}`} className="p-6 hover:bg-gray-50 cursor-pointer transition-all active:bg-blue-50/30" onMouseEnter={() => onHoverStation(sid)} onMouseLeave={() => onHoverStation(null)} onClick={() => onSelectStation(sid)} >
+              <div
+                key={`${sid}-${i}`}
+                ref={(el) => { if (el) itemRefs.current.set(sid, el); }}
+                className={`p-6 cursor-pointer transition-all active:bg-blue-50/30
+                  ${isSelected
+                    ? 'bg-blue-50 border-l-4 border-blue-400'
+                    : 'hover:bg-gray-50 border-l-4 border-transparent'
+                  }`}
+                onMouseEnter={() => onHoverStation(sid)}
+                onMouseLeave={() => onHoverStation(null)}
+                onClick={() => onSelectStation(sid)}
+              >
                 <div className="flex justify-between items-start mb-1.5">
                   <h3 className="font-bold text-gray-800 text-[16px] leading-tight pr-4">{s.statNm || '이름 없음'}</h3>
                   {s.distance && <span className="text-[12px] font-medium text-gray-400 whitespace-nowrap">{s.distance}km</span>}
