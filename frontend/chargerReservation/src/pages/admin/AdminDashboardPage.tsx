@@ -64,7 +64,7 @@ const inquiryStatusStyles: { [key: string]: { label: string; badge: string } } =
 
 const AdminDashboardPage = () => {
 
-  const navigate = useNavigate(); // ✅ 추가
+  const navigate = useNavigate();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentReservations, setRecentReservations] = useState<RecentReservation[]>([]);
@@ -91,11 +91,28 @@ const AdminDashboardPage = () => {
           fetch("http://localhost:8080/api/admin/penalties",    { headers }),
         ]);
 
-      if (statsRes.ok)       setStats(await statsRes.json());
-      if (reservationRes.ok) setRecentReservations((await reservationRes.json()).slice(0, 5));
-      if (noticeRes.ok)      setRecentNotices((await noticeRes.json()).slice(0, 5));
-      if (inquiryRes.ok)     setRecentInquiries((await inquiryRes.json()).slice(0, 5));
-      if (penaltyRes.ok)     setRecentPenalties((await penaltyRes.json()).slice(0, 5));
+      if (statsRes.ok) setStats(await statsRes.json());
+
+      if (reservationRes.ok) {
+        const data = await reservationRes.json();
+        const list = Array.isArray(data) ? data : data.content ?? [];
+        setRecentReservations(list.slice(0, 5));
+      }
+      if (noticeRes.ok) {
+        const data = await noticeRes.json();
+        const list = Array.isArray(data) ? data : data.content ?? [];
+        setRecentNotices(list.slice(0, 5));
+      }
+      if (inquiryRes.ok) {
+        const data = await inquiryRes.json();
+        const list = Array.isArray(data) ? data : data.content ?? [];
+        setRecentInquiries(list.slice(0, 5));
+      }
+      if (penaltyRes.ok) {
+        const data = await penaltyRes.json();
+        const list = Array.isArray(data) ? data : data.content ?? [];
+        setRecentPenalties(list.slice(0, 5));
+      }
 
     } catch (error) {
       console.error("서버 연결 실패", error);
@@ -108,26 +125,81 @@ const AdminDashboardPage = () => {
     fetchDashboard();
   }, []);
 
+  // ✅ 개선 — 아이콘 / 색상 / 경로 추가
   const statCards = [
-    { label: "총 회원수",   value: stats?.totalMembers?.toLocaleString()  ?? "-", unit: "명"   },
-    { label: "오늘 예약",   value: stats?.todayReservations?.toString()    ?? "-", unit: "건"   },
-    { label: "총 충전소",   value: stats?.totalStations?.toLocaleString()  ?? "-", unit: "개소" },
-    { label: "고장 충전기", value: stats?.brokenChargers?.toLocaleString() ?? "-", unit: "대"   },
-    { label: "미답변 문의", value: stats?.pendingInquiries?.toString()     ?? "-", unit: "건"   },
+    {
+      label: "총 회원수",
+      value: stats?.totalMembers?.toLocaleString() ?? "-",
+      unit: "명",
+      icon: "👥",
+      color: "text-[#1D4ED8]",
+      bg: "bg-[#EFF6FF]",
+      border: "border-[#BFDBFE]",
+      path: "/admin/member",
+    },
+    {
+      label: "오늘 예약",
+      value: stats?.todayReservations?.toString() ?? "-",
+      unit: "건",
+      icon: "📅",
+      color: "text-[#059669]",
+      bg: "bg-[#ECFDF5]",
+      border: "border-[#A7F3D0]",
+      path: "/admin/reservation",
+    },
+    {
+      label: "총 충전소",
+      value: stats?.totalStations?.toLocaleString() ?? "-",
+      unit: "개소",
+      icon: "🗺️",
+      color: "text-[#7C3AED]",
+      bg: "bg-[#F5F3FF]",
+      border: "border-[#DDD6FE]",
+      path: "/admin/charger",
+    },
+    {
+      label: "고장 충전기",
+      value: stats?.brokenChargers?.toLocaleString() ?? "-",
+      unit: "대",
+      icon: "⚠️",
+      color: "text-[#DC2626]",
+      bg: "bg-[#FEF2F2]",
+      border: "border-[#FECACA]",
+      path: "/admin/charger",
+    },
+    {
+      label: "미답변 문의",
+      value: stats?.pendingInquiries?.toString() ?? "-",
+      unit: "건",
+      icon: "💬",
+      color: "text-[#D97706]",
+      bg: "bg-[#FFFBEB]",
+      border: "border-[#FDE68A]",
+      path: "/admin/inquiry",
+    },
   ];
 
   return (
-    <AdminLayout adminName="홍길동">
+    <AdminLayout>
 
       <AdminPageHeader title="대시보드" />
 
-      {/* 통계 카드 */}
+      {/* ✅ 개선된 통계 카드 */}
       <div className="grid grid-cols-5 gap-4 mb-6">
         {statCards.map((card) => (
-          <div key={card.label} className="bg-white border border-gray-100 p-6 shadow-sm">
-            <p className="text-xs text-gray-400 tracking-wide mb-3">{card.label}</p>
+          <div
+            key={card.label}
+            onClick={() => navigate(card.path)}
+            className={`bg-white border ${card.border} p-5 rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-gray-500 font-medium tracking-wide">{card.label}</p>
+              <div className={`w-9 h-9 rounded-xl ${card.bg} flex items-center justify-center text-lg`}>
+                {card.icon}
+              </div>
+            </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-semibold text-gray-800">{card.value}</span>
+              <span className={`text-2xl font-black ${card.color}`}>{card.value}</span>
               <span className="text-xs text-gray-400">{card.unit}</span>
             </div>
           </div>
@@ -138,13 +210,12 @@ const AdminDashboardPage = () => {
       <div className="grid grid-cols-2 gap-4 mb-4">
 
         {/* 최근 예약 */}
-        <div className="bg-white border border-gray-100 shadow-sm">
-          {/* ✅ 헤더 클릭 시 예약 관리 페이지로 이동 */}
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
           <div
             className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
             onClick={() => navigate("/admin/reservation")}
           >
-            <div className="w-1 h-4 bg-blue-700" />
+            <span className="text-base">📅</span>
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">최근 예약</h2>
             <span className="text-xs text-gray-400">최근 5건</span>
             <span className="ml-auto text-xs text-blue-500">전체보기 →</span>
@@ -152,10 +223,10 @@ const AdminDashboardPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">회원 ID</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">충전기 ID</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">시작시간</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">상태</th>
+                <th className="text-left px-5 py-2.5 text-xs text-gray-400 font-medium">회원 ID</th>
+                <th className="text-left px-5 py-2.5 text-xs text-gray-400 font-medium">충전기 ID</th>
+                <th className="text-left px-5 py-2.5 text-xs text-gray-400 font-medium">시작시간</th>
+                <th className="text-left px-5 py-2.5 text-xs text-gray-400 font-medium">상태</th>
               </tr>
             </thead>
             <tbody>
@@ -168,17 +239,16 @@ const AdminDashboardPage = () => {
                   const style = reservationStatusStyles[r.status]
                     ?? { label: r.status, badge: "bg-gray-100 text-gray-500" };
                   return (
-                    // ✅ 행 클릭 시 예약 관리 페이지로 이동
                     <tr
                       key={r.reservationId}
                       onClick={() => navigate("/admin/reservation")}
-                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                      className="border-b border-gray-50 hover:bg-[#F8FAFF] transition-colors cursor-pointer"
                     >
                       <td className="px-5 py-3 text-gray-700 font-medium">{r.memberId}</td>
                       <td className="px-5 py-3 text-gray-500 text-xs">{r.chargerId}</td>
                       <td className="px-5 py-3 text-gray-500 text-xs">{r.startTime?.slice(0, 10)}</td>
                       <td className="px-5 py-3">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${style.badge}`}>
                           {style.label}
                         </span>
                       </td>
@@ -191,13 +261,12 @@ const AdminDashboardPage = () => {
         </div>
 
         {/* 최근 공지 */}
-        <div className="bg-white border border-gray-100 shadow-sm">
-          {/* ✅ 헤더 클릭 시 공지사항 페이지로 이동 */}
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
           <div
             className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
             onClick={() => navigate("/admin/notice")}
           >
-            <div className="w-1 h-4 bg-blue-700" />
+            <span className="text-base">📢</span>
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">최근 공지</h2>
             <span className="text-xs text-gray-400">최근 5건</span>
             <span className="ml-auto text-xs text-blue-500">전체보기 →</span>
@@ -209,15 +278,14 @@ const AdminDashboardPage = () => {
               <li className="px-5 py-6 text-center text-sm text-gray-300">공지가 없습니다</li>
             ) : (
               recentNotices.map((notice) => (
-                // ✅ 행 클릭 시 공지사항 페이지로 이동
                 <li
                   key={notice.noticeId}
                   onClick={() => navigate("/admin/notice")}
-                  className="flex items-center justify-between px-5 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                  className="flex items-center justify-between px-5 py-3 border-b border-gray-50 hover:bg-[#F8FAFF] transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2 overflow-hidden">
                     {notice.fixYn === "Y" && (
-                      <span className="shrink-0 px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 font-medium rounded-sm">고정</span>
+                      <span className="shrink-0 px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 font-medium rounded-full">고정</span>
                     )}
                     <span className="text-sm text-gray-700 truncate">{notice.title}</span>
                   </div>
@@ -235,13 +303,12 @@ const AdminDashboardPage = () => {
       <div className="grid grid-cols-2 gap-4">
 
         {/* 최근 문의 */}
-        <div className="bg-white border border-gray-100 shadow-sm">
-          {/* ✅ 헤더 클릭 시 문의 관리 페이지로 이동 */}
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
           <div
             className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
             onClick={() => navigate("/admin/inquiry")}
           >
-            <div className="w-1 h-4 bg-blue-700" />
+            <span className="text-base">💬</span>
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">최근 문의</h2>
             <span className="text-xs text-gray-400">최근 5건</span>
             <span className="ml-auto text-xs text-blue-500">전체보기 →</span>
@@ -249,9 +316,9 @@ const AdminDashboardPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">카테고리</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">제목</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">상태</th>
+                <th className="text-left px-5 py-2.5 text-xs text-gray-400 font-medium">카테고리</th>
+                <th className="text-left px-5 py-2.5 text-xs text-gray-400 font-medium">제목</th>
+                <th className="text-left px-5 py-2.5 text-xs text-gray-400 font-medium">상태</th>
               </tr>
             </thead>
             <tbody>
@@ -264,16 +331,15 @@ const AdminDashboardPage = () => {
                   const style = inquiryStatusStyles[inquiry.status]
                     ?? { label: inquiry.status, badge: "bg-gray-100 text-gray-500" };
                   return (
-                    // ✅ 행 클릭 시 문의 관리 페이지로 이동
                     <tr
                       key={inquiry.inquiryId}
                       onClick={() => navigate("/admin/inquiry")}
-                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                      className="border-b border-gray-50 hover:bg-[#F8FAFF] transition-colors cursor-pointer"
                     >
                       <td className="px-5 py-3 text-gray-500 text-xs">{inquiry.category}</td>
                       <td className="px-5 py-3 text-gray-700 font-medium text-xs truncate max-w-32">{inquiry.title}</td>
                       <td className="px-5 py-3">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${style.badge}`}>
                           {style.label}
                         </span>
                       </td>
@@ -286,13 +352,12 @@ const AdminDashboardPage = () => {
         </div>
 
         {/* 최근 패널티 */}
-        <div className="bg-white border border-gray-100 shadow-sm">
-          {/* ✅ 헤더 클릭 시 패널티 관리 페이지로 이동 */}
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
           <div
             className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
             onClick={() => navigate("/admin/penalty")}
           >
-            <div className="w-1 h-4 bg-blue-700" />
+            <span className="text-base">🚫</span>
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">최근 패널티</h2>
             <span className="text-xs text-gray-400">최근 5건</span>
             <span className="ml-auto text-xs text-blue-500">전체보기 →</span>
@@ -300,9 +365,9 @@ const AdminDashboardPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">회원 ID</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">사유</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">상태</th>
+                <th className="text-left px-5 py-2.5 text-xs text-gray-400 font-medium">회원 ID</th>
+                <th className="text-left px-5 py-2.5 text-xs text-gray-400 font-medium">사유</th>
+                <th className="text-left px-5 py-2.5 text-xs text-gray-400 font-medium">상태</th>
               </tr>
             </thead>
             <tbody>
@@ -315,16 +380,15 @@ const AdminDashboardPage = () => {
                   const style = penaltyStatusStyles[penalty.status]
                     ?? { label: penalty.status, badge: "bg-gray-100 text-gray-500" };
                   return (
-                    // ✅ 행 클릭 시 패널티 관리 페이지로 이동
                     <tr
                       key={penalty.penaltyId}
                       onClick={() => navigate("/admin/penalty")}
-                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                      className="border-b border-gray-50 hover:bg-[#F8FAFF] transition-colors cursor-pointer"
                     >
                       <td className="px-5 py-3 text-gray-700 font-medium">{penalty.memberId}</td>
                       <td className="px-5 py-3 text-gray-500 text-xs truncate max-w-32">{penalty.reason}</td>
                       <td className="px-5 py-3">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${style.badge}`}>
                           {style.label}
                         </span>
                       </td>

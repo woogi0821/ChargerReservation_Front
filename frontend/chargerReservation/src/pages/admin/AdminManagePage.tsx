@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -28,24 +29,36 @@ const partConfig: Record<string, { label: string; color: string }> = {
 };
 
 const AdminManagePage = () => {
-  const { setToastMessage } = useAuthStore(); // ✅ 추가
+  const { setToastMessage } = useAuthStore();
+  const navigate = useNavigate();
 
   const [admins, setAdmins] = useState<AdminDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // ✅ 정렬 상태 — 기본값 최신순
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<MemberDto[]>([]);
   const [selectedMember, setSelectedMember] = useState<MemberDto | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [form, setForm] = useState({ adminRole: "MANAGER", adminPart: "MEMBER" });
 
-  const [form, setForm] = useState({
-    adminRole: "MANAGER",
-    adminPart: "MEMBER",
-  });
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<AdminDto | null>(null);
+  const [newRole, setNewRole] = useState("MANAGER");
 
   const currentAdminId = Number(localStorage.getItem("adminId"));
   const token = localStorage.getItem("accessToken");
+
+  // ✅ SUPER 최상단 고정 + 나머지 정렬
+  const sortedAdmins = [
+    ...admins.filter(a => a.adminRole === "SUPER"),
+    ...[...admins.filter(a => a.adminRole !== "SUPER")].sort((a, b) =>
+      sortOrder === "desc" ? b.adminId - a.adminId : a.adminId - b.adminId
+    ),
+  ];
 
   const fetchAdmins = async () => {
     try {
@@ -120,7 +133,6 @@ const AdminManagePage = () => {
       setSelectedMember(null);
       setForm({ adminRole: "MANAGER", adminPart: "MEMBER" });
       fetchAdmins();
-      // ✅ 추가
       setToastMessage(`${selectedMember.name}님이 관리자로 등록되었습니다 ✅`);
     } catch (error) {
       console.error("서버 연결 실패", error);
@@ -146,9 +158,49 @@ const AdminManagePage = () => {
         },
       });
       if (!response.ok) return;
+
+      if (adminId === currentAdminId) {
+        localStorage.clear();
+        setToastMessage(`${name}님의 관리자 권한이 해제되었습니다`);
+        navigate("/");
+        return;
+      }
+
       fetchAdmins();
-      // ✅ 추가
       setToastMessage(`${name}님의 관리자 권한이 해제되었습니다`);
+    } catch (error) {
+      console.error("서버 연결 실패", error);
+    }
+  };
+
+  const onOpenRoleModal = (admin: AdminDto) => {
+    setSelectedAdmin(admin);
+    setNewRole(admin.adminRole);
+    setIsRoleModalOpen(true);
+  };
+
+  const onUpdateRole = async () => {
+    if (!selectedAdmin) return;
+    if (selectedAdmin.adminRole === newRole) {
+      setIsRoleModalOpen(false);
+      return;
+    }
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/admin/${selectedAdmin.adminId}/role?newRole=${newRole}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        }
+      );
+      if (!response.ok) return;
+      setIsRoleModalOpen(false);
+      setSelectedAdmin(null);
+      fetchAdmins();
+      setToastMessage(`${selectedAdmin.name}님의 역할이 ${newRole} 으로 변경되었습니다 ✅`);
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
@@ -158,19 +210,30 @@ const AdminManagePage = () => {
     <AdminLayout>
       <AdminPageHeader title="관리자 관리" />
 
-      <div className="bg-white border border-gray-100 shadow-sm">
+      <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-1 h-4 bg-blue-700" />
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">관리자 목록</h2>
             <span className="text-xs text-gray-400">총 {admins.length}명</span>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 text-xs text-white bg-blue-700 hover:bg-blue-800 transition-colors"
-          >
-            + 관리자 등록
-          </button>
+          <div className="flex items-center gap-2">
+            {/* ✅ 정렬 드롭다운 */}
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "desc" | "asc")}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 focus:outline-none focus:border-blue-400"
+            >
+              <option value="desc">최신순</option>
+              <option value="asc">오래된순</option>
+            </select>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-4 py-2 text-xs text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors"
+            >
+              + 관리자 등록
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -181,7 +244,7 @@ const AdminManagePage = () => {
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">이름</th>
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">역할</th>
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">담당 파트</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-24">관리</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-36">관리</th>
               </tr>
             </thead>
             <tbody>
@@ -191,47 +254,58 @@ const AdminManagePage = () => {
                     불러오는 중...
                   </td>
                 </tr>
-              ) : admins.length === 0 ? (
+              ) : sortedAdmins.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-300">
                     등록된 관리자가 없습니다
                   </td>
                 </tr>
               ) : (
-                admins.map((admin) => {
+                sortedAdmins.map((admin) => {
                   const isMe = admin.adminId === currentAdminId;
                   const part = partConfig[admin.adminPart] ?? { label: admin.adminPart, color: "bg-gray-50 text-gray-500" };
                   return (
-                    <tr key={admin.adminId} className={`border-b border-gray-50 transition-colors ${isMe ? "bg-blue-50/40" : "hover:bg-gray-50"}`}>
+                    <tr
+                      key={admin.adminId}
+                      className={`border-b border-gray-50 transition-colors ${isMe ? "bg-blue-50/40" : "hover:bg-gray-50"}`}
+                    >
                       <td className="px-5 py-3 text-gray-400">{admin.adminId}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
                           <span className="text-gray-700 font-medium">{admin.name}</span>
                           {isMe && (
-                            <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded font-medium">
+                            <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full font-medium">
                               나
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`px-2 py-0.5 text-xs rounded font-medium ${admin.adminRole === "SUPER" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-600"}`}>
+                        <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${admin.adminRole === "SUPER" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-600"}`}>
                           {admin.adminRole}
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`px-2 py-0.5 text-xs rounded font-medium ${part.color}`}>
+                        <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${part.color}`}>
                           {part.label}
                         </span>
                       </td>
                       <td className="px-5 py-3">
                         {!isMe && (
-                          <button
-                            onClick={() => onDeleteAdmin(admin.adminId, admin.name)}
-                            className="text-xs text-red-400 hover:text-red-600 transition-colors"
-                          >
-                            해제
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => onOpenRoleModal(admin)}
+                              className="text-xs text-blue-500 hover:text-blue-700 transition-colors"
+                            >
+                              역할변경
+                            </button>
+                            <button
+                              onClick={() => onDeleteAdmin(admin.adminId, admin.name)}
+                              className="text-xs text-red-400 hover:text-red-600 transition-colors"
+                            >
+                              해제
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -245,8 +319,9 @@ const AdminManagePage = () => {
 
       {/* 관리자 등록 모달 */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" onClick={onCloseModal}>
-          <div className="bg-white w-full max-w-sm mx-4 shadow-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30" onClick={onCloseModal} />
+          <div className="relative bg-white w-full max-w-sm mx-4 shadow-lg rounded-xl overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-1 h-4 bg-blue-700" />
@@ -269,7 +344,7 @@ const AdminManagePage = () => {
                   />
                   <button
                     onClick={onSearchMember}
-                    className="px-3 py-1 text-xs text-white bg-blue-700 hover:bg-blue-800 transition-colors"
+                    className="px-3 py-1 text-xs text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors"
                   >
                     검색
                   </button>
@@ -277,7 +352,7 @@ const AdminManagePage = () => {
               </div>
 
               {searchResults.length > 0 && !selectedMember && (
-                <div className="border border-gray-100 rounded max-h-36 overflow-y-auto">
+                <div className="border border-gray-100 rounded-lg max-h-36 overflow-y-auto">
                   {searchResults.map((member) => (
                     <button
                       key={member.memberId}
@@ -299,7 +374,7 @@ const AdminManagePage = () => {
               )}
 
               {selectedMember && (
-                <div className="flex items-center justify-between bg-blue-50 px-3 py-2.5 rounded">
+                <div className="flex items-center justify-between bg-blue-50 px-3 py-2.5 rounded-lg">
                   <div>
                     <span className="text-sm text-blue-700 font-medium">{selectedMember.name}</span>
                     <span className="text-xs text-blue-400 ml-2">{selectedMember.email}</span>
@@ -346,7 +421,7 @@ const AdminManagePage = () => {
               <button
                 onClick={onCreateAdmin}
                 disabled={!selectedMember}
-                className={`flex-1 py-2 text-sm transition-colors
+                className={`flex-1 py-2 text-sm rounded-lg transition-colors
                   ${selectedMember
                     ? "text-white bg-blue-700 hover:bg-blue-800"
                     : "text-gray-300 bg-gray-100 cursor-not-allowed"
@@ -356,7 +431,88 @@ const AdminManagePage = () => {
               </button>
               <button
                 onClick={onCloseModal}
-                className="flex-1 py-2 text-sm text-gray-400 border border-gray-200 hover:bg-gray-50 transition-colors"
+                className="flex-1 py-2 text-sm text-gray-400 border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 역할 변경 모달 */}
+      {isRoleModalOpen && selectedAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setIsRoleModalOpen(false)} />
+          <div className="relative bg-white w-full max-w-sm mx-4 shadow-lg rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-4 bg-blue-700" />
+                <h3 className="text-sm font-semibold text-gray-700">역할 변경</h3>
+              </div>
+              <button
+                onClick={() => setIsRoleModalOpen(false)}
+                className="text-gray-300 hover:text-gray-500 transition-colors"
+              >✕</button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="flex items-center border-b border-gray-50 pb-3">
+                <span className="w-20 text-xs text-gray-400">대상 관리자</span>
+                <span className="text-sm text-gray-700 font-medium">{selectedAdmin.name}</span>
+              </div>
+              <div className="flex items-center border-b border-gray-50 pb-3">
+                <span className="w-20 text-xs text-gray-400">현재 역할</span>
+                <span className={`px-2 py-0.5 text-xs rounded-full font-medium
+                  ${selectedAdmin.adminRole === "SUPER"
+                    ? "bg-purple-100 text-purple-700"
+                    : "bg-gray-100 text-gray-600"
+                  }`}>
+                  {selectedAdmin.adminRole}
+                </span>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 tracking-wide mb-2">변경할 역할</label>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setNewRole("MANAGER")}
+                    className={`flex-1 py-2.5 text-sm rounded-lg border transition-colors font-medium
+                      ${newRole === "MANAGER"
+                        ? "bg-gray-700 text-white border-gray-700"
+                        : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
+                      }`}
+                  >
+                    MANAGER
+                  </button>
+                  <button
+                    onClick={() => setNewRole("SUPER")}
+                    className={`flex-1 py-2.5 text-sm rounded-lg border transition-colors font-medium
+                      ${newRole === "SUPER"
+                        ? "bg-purple-600 text-white border-purple-600"
+                        : "bg-white text-gray-500 border-gray-200 hover:border-purple-400"
+                      }`}
+                  >
+                    SUPER
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
+              <button
+                onClick={onUpdateRole}
+                disabled={selectedAdmin.adminRole === newRole}
+                className={`flex-1 py-2 text-sm rounded-lg transition-colors
+                  ${selectedAdmin.adminRole !== newRole
+                    ? "text-white bg-blue-700 hover:bg-blue-800"
+                    : "text-gray-300 bg-gray-100 cursor-not-allowed"
+                  }`}
+              >
+                변경 완료
+              </button>
+              <button
+                onClick={() => setIsRoleModalOpen(false)}
+                className="flex-1 py-2 text-sm text-gray-400 border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 취소
               </button>

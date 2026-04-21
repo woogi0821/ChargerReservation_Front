@@ -157,7 +157,6 @@ const SupportPage = () => {
     }
   };
 
-  // ✅ 추가 — 문의 삭제
   const onDeleteInquiry = async (inquiryId: number) => {
     if (!window.confirm("문의를 삭제하시겠습니까?")) return;
     try {
@@ -185,18 +184,21 @@ const SupportPage = () => {
     : FAQ_LIST.filter((f) => f.cat === faqCat);
 
   return (
-    <div className="min-h-screen bg-[#F0F4FF] font-['Noto_Sans_KR'] pt-6 pb-20">
+    // ✅ 수정 — pt-24 로 헤더 가림 방지 (모바일/데스크탑 공통)
+    <div className="min-h-screen bg-[#F0F4FF] font-['Noto_Sans_KR'] pt-24 pb-20">
       <div className="max-w-3xl mx-auto px-4">
 
-        <div className="mb-8">
-          <h1 className="text-2xl font-black text-[#0F172A]">💬 고객센터</h1>
-          <p className="text-[#64748B] mt-1 text-sm">궁금한 점이 있으시면 언제든지 문의해주세요</p>
+        {/* ✅ 수정 — 타이틀 모바일 크기 조정 */}
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl font-black text-[#0F172A]">💬 고객센터</h1>
+          <p className="text-[#64748B] mt-1 text-xs sm:text-sm">궁금한 점이 있으시면 언제든지 문의해주세요</p>
         </div>
 
+        {/* ✅ 수정 — 탭 버튼 flex-1 로 꽉 채우기 */}
         <div className="flex border-b border-gray-200 mb-6">
           <button
             onClick={() => setActiveTab("faq")}
-            className={`px-6 py-3 text-sm font-medium transition-colors border-b-2
+            className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2
               ${activeTab === "faq"
                 ? "text-[#1D4ED8] border-[#1D4ED8]"
                 : "text-gray-400 border-transparent hover:text-gray-600"
@@ -206,7 +208,7 @@ const SupportPage = () => {
           </button>
           <button
             onClick={() => setActiveTab("inquiry")}
-            className={`px-6 py-3 text-sm font-medium transition-colors border-b-2
+            className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2
               ${activeTab === "inquiry"
                 ? "text-[#1D4ED8] border-[#1D4ED8]"
                 : "text-gray-400 border-transparent hover:text-gray-600"
@@ -219,12 +221,12 @@ const SupportPage = () => {
         {/* FAQ 탭 */}
         {activeTab === "faq" && (
           <div>
-            <div className="flex gap-2 flex-wrap mb-6">
+            <div className="flex gap-2 flex-wrap mb-5 sm:mb-6">
               {FAQ_CATS.map((cat) => (
                 <button
                   key={cat.value}
                   onClick={() => { setFaqCat(cat.value); setOpenFaqIdx(null); }}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors
+                  className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors
                     ${faqCat === cat.value
                       ? "bg-[#1D4ED8] text-white"
                       : "bg-white text-[#64748B] border border-[#DBEAFE] hover:border-[#1D4ED8] hover:text-[#1D4ED8]"
@@ -243,20 +245,20 @@ const SupportPage = () => {
                 >
                   <button
                     onClick={() => setOpenFaqIdx(openFaqIdx === i ? null : i)}
-                    className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-[#F8FAFF] transition-colors"
+                    className="w-full flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-4 text-left hover:bg-[#F8FAFF] transition-colors"
                   >
                     <span className={`px-2 py-0.5 text-xs rounded font-medium shrink-0 ${catTagColor[faq.cat]}`}>
                       {faq.catLabel}
                     </span>
-                    <span className="flex-1 text-sm font-medium text-[#0F172A]">
+                    <span className="flex-1 text-xs sm:text-sm font-medium text-[#0F172A]">
                       {faq.q}
                     </span>
-                    <span className={`text-gray-400 text-xs transition-transform duration-200 ${openFaqIdx === i ? "rotate-180" : ""}`}>
+                    <span className={`text-gray-400 text-xs transition-transform duration-200 shrink-0 ${openFaqIdx === i ? "rotate-180" : ""}`}>
                       ▾
                     </span>
                   </button>
                   {openFaqIdx === i && (
-                    <div className="px-5 pb-4 text-sm text-[#64748B] leading-relaxed border-t border-[#F1F5F9] pt-3">
+                    <div className="px-4 sm:px-5 pb-4 text-xs sm:text-sm text-[#64748B] leading-relaxed border-t border-[#F1F5F9] pt-3">
                       {faq.a}
                     </div>
                   )}
@@ -270,10 +272,10 @@ const SupportPage = () => {
         {activeTab === "inquiry" && (
           <div>
             {!loggedIn ? (
-              <div className="bg-white rounded-2xl border border-[#DBEAFE] p-12 flex flex-col items-center gap-4 text-center">
-                <div className="text-5xl">🔐</div>
-                <h3 className="text-lg font-black text-[#0F172A]">로그인이 필요한 서비스입니다</h3>
-                <p className="text-sm text-[#64748B] leading-relaxed">
+              <div className="bg-white rounded-2xl border border-[#DBEAFE] p-8 sm:p-12 flex flex-col items-center gap-4 text-center">
+                <div className="text-4xl sm:text-5xl">🔐</div>
+                <h3 className="text-base sm:text-lg font-black text-[#0F172A]">로그인이 필요한 서비스입니다</h3>
+                <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed">
                   1:1 문의는 로그인 후 이용하실 수 있습니다.
                   <br />
                   로그인 후 문의를 남겨주시면 빠르게 답변드리겠습니다.
@@ -286,10 +288,11 @@ const SupportPage = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-4 sm:gap-6">
 
-                <div className="bg-white rounded-2xl border border-[#DBEAFE] p-6">
-                  <h3 className="text-base font-black text-[#0F172A] mb-5">✉️ 문의 작성</h3>
+                {/* ✅ 수정 — 패딩 모바일 조정 */}
+                <div className="bg-white rounded-2xl border border-[#DBEAFE] p-4 sm:p-6">
+                  <h3 className="text-sm sm:text-base font-black text-[#0F172A] mb-4 sm:mb-5">✉️ 문의 작성</h3>
 
                   <div className="mb-4">
                     <label className="block text-xs text-[#64748B] font-medium mb-2">문의 유형</label>
@@ -321,7 +324,7 @@ const SupportPage = () => {
                     />
                   </div>
 
-                  <div className="mb-6">
+                  <div className="mb-5 sm:mb-6">
                     <label className="block text-xs text-[#64748B] font-medium mb-2">내용</label>
                     <textarea
                       value={content}
@@ -345,8 +348,9 @@ const SupportPage = () => {
                   </button>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-[#DBEAFE] p-6">
-                  <h3 className="text-base font-black text-[#0F172A] mb-5">📋 내 문의 내역</h3>
+                {/* ✅ 수정 — 패딩 모바일 조정 */}
+                <div className="bg-white rounded-2xl border border-[#DBEAFE] p-4 sm:p-6">
+                  <h3 className="text-sm sm:text-base font-black text-[#0F172A] mb-4 sm:mb-5">📋 내 문의 내역</h3>
 
                   {isLoadingInquiries ? (
                     <div className="text-center py-8 text-sm text-gray-300">불러오는 중...</div>
@@ -363,7 +367,7 @@ const SupportPage = () => {
                         >
                           <button
                             onClick={() => setOpenInquiryIdx(openInquiryIdx === i ? null : i)}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#F8FAFF] transition-colors"
+                            className="w-full flex items-center gap-2 px-3 sm:px-4 py-3 text-left hover:bg-[#F8FAFF] transition-colors"
                           >
                             <span className={`px-2 py-0.5 text-xs rounded font-medium shrink-0
                               ${inquiry.status === "ANSWERED"
@@ -372,32 +376,32 @@ const SupportPage = () => {
                               }`}>
                               {inquiry.status === "ANSWERED" ? "답변완료" : "답변대기"}
                             </span>
-                            <span className="text-xs text-[#94A3B8] shrink-0">{inquiry.category}</span>
-                            <span className="flex-1 text-sm font-medium text-[#0F172A] truncate">
+                            {/* ✅ 수정 — 모바일에서 카테고리 숨김 */}
+                            <span className="hidden sm:inline text-xs text-[#94A3B8] shrink-0">{inquiry.category}</span>
+                            <span className="flex-1 text-xs sm:text-sm font-medium text-[#0F172A] truncate min-w-0">
                               {inquiry.title}
                             </span>
                             <span className="text-xs text-[#94A3B8] shrink-0">
                               {inquiry.insertTime?.slice(0, 10)}
                             </span>
-                            <span className={`text-gray-400 text-xs transition-transform duration-200 ${openInquiryIdx === i ? "rotate-180" : ""}`}>
+                            <span className={`text-gray-400 text-xs transition-transform duration-200 shrink-0 ${openInquiryIdx === i ? "rotate-180" : ""}`}>
                               ▾
                             </span>
                           </button>
 
                           {openInquiryIdx === i && (
-                            <div className="px-4 pb-4 border-t border-[#F1F5F9] pt-3 space-y-3">
-                              <div className="text-sm text-[#64748B] leading-relaxed">
+                            <div className="px-3 sm:px-4 pb-4 border-t border-[#F1F5F9] pt-3 space-y-3">
+                              <div className="text-xs sm:text-sm text-[#64748B] leading-relaxed">
                                 {inquiry.content}
                               </div>
                               {inquiry.answerContent && (
                                 <div className="bg-[#F8FAFF] rounded-xl p-3 border border-[#DBEAFE]">
                                   <p className="text-xs text-[#1D4ED8] font-medium mb-1">💬 답변</p>
-                                  <p className="text-sm text-[#64748B] leading-relaxed">
+                                  <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed">
                                     {inquiry.answerContent}
                                   </p>
                                 </div>
                               )}
-                              {/* ✅ 추가 — PENDING 상태일 때만 삭제 버튼 표시 */}
                               {inquiry.status === "PENDING" && (
                                 <div className="flex justify-end pt-1">
                                   <button
