@@ -1,4 +1,4 @@
-import { useState, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { useChargerSearch } from '../../hook/useChargerSearch';
 
 interface StationSidebarProps {
@@ -23,19 +23,44 @@ interface StationSidebarProps {
   onHoverStation: (id: string | null) => void;
   mapCenter: { lat: number; lng: number };
   onSelectStation: (id: string) => void;
+  selectedStationId: string | null;
 }
 
 const StationSidebar = ({
   stations, setSearchResults, keyword, setKeyword, isSearchMode, setIsSearchMode,
   isLoading, speedFilter, setSpeedFilter, statusFilter, setStatusFilter,
   isParkingAvailable, setIsParkingAvailable, isParkingFree, setIsParkingFree,
-  isNoRestriction, setIsNoRestriction, onHoverStation, onSelectStation, mapCenter
+  isNoRestriction, setIsNoRestriction, onHoverStation, onSelectStation, mapCenter,
+  selectedStationId
 }: StationSidebarProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const { isLoading: isSearching, executeSearch } = useChargerSearch();
   
-  // ✅ 필터 접힘 상태 (기본값 접힘)
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+
+  // ✅ 마커 클릭 시 해당 아이템으로 자동 스크롤
+  useEffect(() => {
+    if (!selectedStationId) return;
+    const el = itemRefs.current.get(selectedStationId);
+    if (el && scrollRef.current) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [selectedStationId]);
+
+  // ✅ 새 검색(selectedStationId 없을 때)에만 맨 위로 스크롤
+  // selectedStationId 있을 때는 절대 스크롤 건드리지 않음
+  const prevStationsLengthRef = useRef<number>(0);
+  useEffect(() => {
+    const newLength = stations.length;
+    const prevLength = prevStationsLengthRef.current;
+    prevStationsLengthRef.current = newLength;
+
+    // 완전히 새로운 검색 결과로 교체됐을 때만(길이가 크게 달라질 때) 맨 위로
+    if (!selectedStationId && newLength !== prevLength && prevLength > 0 && newLength > 10) {
+      scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [stations]);
 
   const handleExecuteSearch = async () => {
     setIsSearchMode(true);
@@ -133,7 +158,7 @@ const StationSidebar = ({
             <div className="space-y-2.5">
               <label className="text-[11px] font-bold text-gray-400 tracking-wide ml-1">이용 상태</label>
               <div className="flex gap-2">
-                {['전체', '여유', '혼잡'].map((t) => (
+                {['전체', '여유', '보통'].map((t) => (
                   <button key={t} onClick={() => setStatusFilter(t)} className={`px-5 py-2 rounded-full text-xs font-semibold border transition-all ${statusFilter === t ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100' : 'bg-white text-gray-500 border-gray-200'}`}> {t} </button>
                 ))}
               </div>
@@ -171,8 +196,20 @@ const StationSidebar = ({
         ) : (
           stations.map((s: any, i: number) => {
             const sid = s.statId || s.chargerId;
+            const isSelected = selectedStationId === sid;
             return (
-              <div key={`${sid}-${i}`} className="p-6 hover:bg-gray-50 cursor-pointer transition-all active:bg-blue-50/30" onMouseEnter={() => onHoverStation(sid)} onMouseLeave={() => onHoverStation(null)} onClick={() => onSelectStation(sid)} >
+              <div
+                key={`${sid}-${i}`}
+                ref={(el) => { if (el) itemRefs.current.set(sid, el); }}
+                className={`p-6 cursor-pointer transition-all active:bg-blue-50/30
+                  ${isSelected
+                    ? 'bg-blue-50 border-l-4 border-blue-400'
+                    : 'hover:bg-gray-50 border-l-4 border-transparent'
+                  }`}
+                onMouseEnter={() => onHoverStation(sid)}
+                onMouseLeave={() => onHoverStation(null)}
+                onClick={() => onSelectStation(sid)}
+              >
                 <div className="flex justify-between items-start mb-1.5">
                   <h3 className="font-bold text-gray-800 text-[16px] leading-tight pr-4">{s.statNm || '이름 없음'}</h3>
                   {s.distance && <span className="text-[12px] font-medium text-gray-400 whitespace-nowrap">{s.distance}km</span>}

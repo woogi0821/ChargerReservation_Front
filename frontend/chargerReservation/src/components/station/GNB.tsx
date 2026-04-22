@@ -21,6 +21,7 @@ const GNB = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  // 데스크탑 메뉴 스타일
   const menuBtnClass = (path: string) => `
     relative flex flex-col items-center justify-center gap-1 w-full h-[72px]
     transition-all duration-200 group
@@ -30,8 +31,16 @@ const GNB = () => {
     }
   `;
 
+  // 모바일 하단 바 아이템 스타일
+  const mobileTabClass = (path: string) => `
+    flex flex-col items-center justify-center gap-1 flex-1 h-full
+    transition-all duration-200
+    ${isActive(path) ? 'text-blue-600' : 'text-zinc-400'}
+  `;
+
   return (
     <>
+      {/* --- 1. 데스크탑 사이드바 (기존 유지) --- */}
       <aside className="hidden md:flex w-[80px] h-full
         bg-white/80 backdrop-blur-xl border-r border-zinc-200/60
         shadow-[2px_0_20px_rgba(0,0,0,0.04)]
@@ -67,6 +76,34 @@ const GNB = () => {
         </div>
       </aside>
 
+      {/* --- 2. 모바일 하단 탭 바 (추가됨) --- */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full h-[65px] bg-white/90 backdrop-blur-lg border-t border-zinc-100 flex items-center justify-around z-[100] pb-safe">
+        <a href="/" className={mobileTabClass('/')}>
+          <span className="text-xl">🏠</span>
+          <span className="text-[10px] font-medium">홈</span>
+        </a>
+        <a href="/stations" className={mobileTabClass('/stations')}>
+          <span className="text-xl">📍</span>
+          <span className="text-[10px] font-medium">충전소</span>
+        </a>
+        <a href="/notices" className={mobileTabClass('/notices')}>
+          <span className="text-xl">📣</span>
+          <span className="text-[10px] font-medium">공지</span>
+        </a>
+        {loggedIn ? (
+          <a href="/mypage" className={mobileTabClass('/mypage')}>
+            <span className="text-xl">👤</span>
+            <span className="text-[10px] font-medium">MY</span>
+          </a>
+        ) : (
+          <button onClick={() => setActiveModal("LOGIN")} className={mobileTabClass('')}>
+            <span className="text-xl">🔑</span>
+            <span className="text-[10px] font-medium">로그인</span>
+          </button>
+        )}
+      </nav>
+
+      {/* --- 3. 공통 모달 (기존 유지) --- */}
       <Modal isOpen={activeModal !== "NONE"} onClose={closeModal} title="">
         <AuthModalContainer 
           activeModal={activeModal as any} 
