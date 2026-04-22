@@ -30,24 +30,30 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         loginPw: data.loginPw,
       });
       // ✅ 수정 — memberId 추가
-      const { accessToken, memberGrade, memberId, adminId, adminRole, adminPart, name } =
-        response.data as IToken;
+      const {
+        accessToken,
+        memberGrade,
+        memberId,
+        adminId,
+        adminRole,
+        adminPart,
+        name,
+      } = response.data as IToken;
 
       login(memberGrade, accessToken);
 
       // ✅ 수정 — memberId 추가
-      localStorage.setItem("memberId",    String(memberId ?? ""));
-      localStorage.setItem("adminId",     String(adminId ?? ""));
-      localStorage.setItem("adminRole",   adminRole ?? "");
-      localStorage.setItem("adminPart",   adminPart ?? "");
+      localStorage.setItem("memberId", String(memberId ?? ""));
+      localStorage.setItem("adminId", String(adminId ?? ""));
+      localStorage.setItem("adminRole", adminRole ?? "");
+      localStorage.setItem("adminPart", adminPart ?? "");
       localStorage.setItem("accessToken", accessToken);
-      localStorage.setItem("adminName",   name ?? "");
+      localStorage.setItem("adminName", name ?? "");
 
       setToastMessage(`환영합니다, ${name ?? "관리자"}님! 👋`);
 
       closeModal();
       nav("/");
-
     } catch (error: any) {
       console.error("로그인 시도 중 오류 발생:", error);
 
@@ -77,6 +83,19 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       handleLogin(values);
     },
   });
+
+  // SVG 로고 컴포넌트
+  const KakaoIcon = () => (
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2 fill-[#191919]">
+      <path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.558 1.707 4.8 4.315 6.055-.188.702-.682 2.545-.78 2.926-.12.479.178.474.374.345.154-.101 2.452-1.666 3.447-2.343.53.074 1.077.117 1.644.117 4.97 0 9-3.185 9-7.115S16.97 3 12 3z"/>
+    </svg>
+  );
+
+  const NaverIcon = () => (
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2 fill-white">
+      <path d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845z"/>
+    </svg>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -135,26 +154,21 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         </span>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 w-full">
         <Button
-          type="button"
-          onClick={() =>
-            (window.location.href =
-              "http://localhost:8080/oauth2/authorization/kakao")
-          }
-          className="w-full bg-[#FEE500] text-[#191919] hover:bg-[#FADA0A] border-none"
+          variant="kakao"
+          onClick={() => (window.location.href = "http://localhost:8080/oauth2/authorization/kakao")}
         >
-          <span className="mr-2">🟡</span> 카카오로 로그인
+          <KakaoIcon />
+          카카오로 로그인
         </Button>
+
         <Button
-          type="button"
-          onClick={() =>
-            (window.location.href =
-              "http://localhost:8080/oauth2/authorization/naver")
-          }
-          className="w-full bg-[#02b351] text-white hover:bg-[#02b351] border-none"
+          variant="naver"
+          onClick={() => (window.location.href = "http://localhost:8080/oauth2/authorization/naver")}
         >
-          <span className="mr-2">🟢</span> 네이버로 로그인
+          <NaverIcon />
+          네이버로 로그인
         </Button>
       </div>
 
