@@ -25,9 +25,6 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const sidebarRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (loggedIn && !isAdmin) {
       const fetchNotis = async () => {
