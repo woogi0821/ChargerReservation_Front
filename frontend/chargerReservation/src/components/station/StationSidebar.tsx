@@ -23,7 +23,7 @@ interface StationSidebarProps {
   onHoverStation: (id: string | null) => void;
   mapCenter: { lat: number; lng: number };
   onSelectStation: (id: string) => void;
-  selectedStationId: string | null; // ✅ 추가
+  selectedStationId: string | null;
 }
 
 const StationSidebar = ({
@@ -31,17 +31,15 @@ const StationSidebar = ({
   isLoading, speedFilter, setSpeedFilter, statusFilter, setStatusFilter,
   isParkingAvailable, setIsParkingAvailable, isParkingFree, setIsParkingFree,
   isNoRestriction, setIsNoRestriction, onHoverStation, onSelectStation, mapCenter,
-  selectedStationId // ✅ 추가
+  selectedStationId
 }: StationSidebarProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map()); // ✅ 각 아이템 ref
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const { isLoading: isSearching, executeSearch } = useChargerSearch();
   
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
 
-  
-
-  // ✅ selectedStationId 바뀌면 해당 아이템으로 자동 스크롤
+  // ✅ 마커 클릭 시 해당 아이템으로 자동 스크롤
   useEffect(() => {
     if (!selectedStationId) return;
     const el = itemRefs.current.get(selectedStationId);
@@ -50,17 +48,19 @@ const StationSidebar = ({
     }
   }, [selectedStationId]);
 
+  // ✅ 새 검색(selectedStationId 없을 때)에만 맨 위로 스크롤
+  // selectedStationId 있을 때는 절대 스크롤 건드리지 않음
+  const prevStationsLengthRef = useRef<number>(0);
   useEffect(() => {
-    
-  if (scrollRef.current) {
-    // 즉시 위로 올리고 싶으면 behavior: 'auto'
-    // 부드럽게 올리고 싶으면 behavior: 'smooth'
-    scrollRef.current.scrollTo({
-      top: 0,
-      behavior: 'auto' 
-    });
-  }
-}, [stations]); // 👈 stations 데이터가 바뀔 때마다 실행
+    const newLength = stations.length;
+    const prevLength = prevStationsLengthRef.current;
+    prevStationsLengthRef.current = newLength;
+
+    // 완전히 새로운 검색 결과로 교체됐을 때만(길이가 크게 달라질 때) 맨 위로
+    if (!selectedStationId && newLength !== prevLength && prevLength > 0 && newLength > 10) {
+      scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [stations]);
 
   const handleExecuteSearch = async () => {
     setIsSearchMode(true);
@@ -68,36 +68,34 @@ const StationSidebar = ({
     setSearchResults(res || []);
   };
 
-const renderPrices = (s: any) => {
-  const hasFast = s.fastChargerStatus && !s.fastChargerStatus.includes('0/0');
-  const hasSlow = s.slowChargerStatus && !s.slowChargerStatus.includes('0/0');
-  const priceElements = [];
+  const renderPrices = (s: any) => {
+    const hasFast = s.fastChargerStatus && !s.fastChargerStatus.includes('0/0');
+    const hasSlow = s.slowChargerStatus && !s.slowChargerStatus.includes('0/0');
+    const priceElements = [];
 
-  if (hasFast) {
-    priceElements.push(
-      <div key="fast" className="flex flex-col items-end">
-        <span className="text-[9px] text-blue-500 font-bold mb-[-3px]">급속</span>
-        {/* 목록에서는 깔끔하게 요금 정보만 노출 */}
-        <div className="text-blue-600 font-extrabold text-[14px]">
-          {s.currentPrice && s.currentPrice > 0 ? Math.floor(s.currentPrice) : '현장확인'}
-          <span className="text-[9px] font-normal text-gray-400 ml-0.5">원</span>
+    if (hasFast) {
+      priceElements.push(
+        <div key="fast" className="flex flex-col items-end">
+          <span className="text-[9px] text-blue-500 font-bold mb-[-3px]">급속</span>
+          <div className="text-blue-600 font-extrabold text-[14px]">
+            {s.currentPrice && s.currentPrice > 0 ? Math.floor(s.currentPrice) : '현장확인'}
+            <span className="text-[9px] font-normal text-gray-400 ml-0.5">원</span>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (hasSlow) {
-    priceElements.push(
-      <div key="slow" className="flex flex-col items-end">
-        <span className="text-[9px] text-green-500 font-bold mb-[-3px]">완속</span>
-        {/* 목록에서는 깔끔하게 요금 정보만 노출 */}
-        <div className="text-green-600 font-extrabold text-[14px]">
-          {s.slowPrice && s.slowPrice > 0 ? Math.floor(s.slowPrice) : '현장확인'}
-          <span className="text-[9px] font-normal text-gray-400 ml-0.5">원</span>
+    if (hasSlow) {
+      priceElements.push(
+        <div key="slow" className="flex flex-col items-end">
+          <span className="text-[9px] text-green-500 font-bold mb-[-3px]">완속</span>
+          <div className="text-green-600 font-extrabold text-[14px]">
+            {s.slowPrice && s.slowPrice > 0 ? Math.floor(s.slowPrice) : '현장확인'}
+            <span className="text-[9px] font-normal text-gray-400 ml-0.5">원</span>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
     return priceElements.length === 0 ? (
       <span className="text-gray-400 text-[11px]">요금 정보 없음</span>

@@ -363,7 +363,7 @@ const DesktopDetail = () => (
       
       {/* 💡 CSS 영역: 크롬/사파리 스크롤바 숨기기용 스타일 태그 */}
       <style>{`
-        .flex-1::-webkit-scrollbar {
+        .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }
       `}</style>
