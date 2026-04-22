@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 // HTML 기본 속성 상속받기
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "outline" | "danger"; // 성격
+  variant?: "primary" | "outline" | "danger" | "kakao" | "naver"; // 성격
   size?: "sm" | "md" | "lg";                 // 크기
   children: ReactNode;                       // 원칙 2: 구멍 뚫기
 }
@@ -23,6 +23,8 @@ export default function Button({
     primary: "bg-[#3B82F6] text-white hover:bg-[#1D4ED8] shadow-md",
     outline: "border-2 border-[#DBEAFE] text-[#3B82F6] bg-white hover:bg-[#F5F8FF]",
     danger: "bg-[#EF4444] text-white hover:bg-[#B91C1C]",
+    kakao: "bg-[#FEE500] !text-[#191919] hover:!bg-[#FADA0A] border-none shadow-none",
+    naver: "bg-[#03C75A] !text-white hover:!bg-[#02b351] border-none shadow-none",
   };
 
   const sizes = {
