@@ -5,7 +5,7 @@ export interface NotificationResponseDto {
   notiId: number;
   title: string;
   message: string;
-  notiType: 'RESERVATION' | 'PENALTY';
+  notiType: string;
   targetUrl: string;
   isRead: string;
   createdAt: string;

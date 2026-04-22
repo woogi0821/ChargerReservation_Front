@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { useAuthStore } from "../../store/useAuthStore"; // ✅ 추가
 
 interface Notice {
   noticeId: number;
@@ -31,12 +32,14 @@ const canEditNotice = (): boolean => {
 };
 
 const AdminNoticePage = () => {
-  // ✅ 페이징 처리를 위한 상태 추가
+  const { setToastMessage } = useAuthStore(); // ✅ 추가
+
   const [notices, setNotices] = useState<Notice[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc"); // ✅ 추가
 
   const [modalMode, setModalMode] = useState<"write" | "edit" | null>(null);
   const [editNotice, setEditNotice] = useState<Notice | null>(null);
@@ -45,7 +48,6 @@ const AdminNoticePage = () => {
 
   const hasEditPermission = canEditNotice();
 
-  // ✅ API 호출 시 page 파라미터 적용
   const fetchNotices = async (page: number = 0) => {
     setIsLoading(true);
     try {
@@ -60,7 +62,6 @@ const AdminNoticePage = () => {
       if (!response.ok) return;
 
       const data = await response.json();
-      // ✅ Page 객체 구조에 맞게 데이터 세팅
       setNotices(data.content);
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
@@ -75,6 +76,15 @@ const AdminNoticePage = () => {
   useEffect(() => {
     fetchNotices(0);
   }, []);
+
+  // ✅ 고정 공지 최상단 고정 + 등록일 정렬 (현재 페이지 내)
+  const sortedNotices = [...notices].sort((a, b) => {
+    if (a.fixYn === "Y" && b.fixYn !== "Y") return -1;
+    if (a.fixYn !== "Y" && b.fixYn === "Y") return 1;
+    const timeA = new Date(a.insertTime).getTime();
+    const timeB = new Date(b.insertTime).getTime();
+    return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
+  });
 
   const onCloseModal = () => {
     setModalMode(null);
@@ -113,8 +123,9 @@ const AdminNoticePage = () => {
         body: JSON.stringify(form),
       });
       if (!response.ok) return;
-      fetchNotices(0); // 새 글 작성 시 1페이지로 이동
+      fetchNotices(0);
       onCloseModal();
+      setToastMessage("공지사항이 등록되었습니다"); // ✅ 추가
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
@@ -136,8 +147,9 @@ const AdminNoticePage = () => {
         }
       );
       if (!response.ok) return;
-      fetchNotices(currentPage); // 수정 후 현재 페이지 유지
+      fetchNotices(currentPage);
       onCloseModal();
+      setToastMessage("공지사항이 수정되었습니다"); // ✅ 추가
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
@@ -160,13 +172,14 @@ const AdminNoticePage = () => {
       );
       if (!response.ok) return;
       fetchNotices(currentPage);
+      setToastMessage("공지사항이 삭제되었습니다"); // ✅ 추가
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
   };
 
   return (
-    <AdminLayout adminName="홍길동">
+    <AdminLayout>
       <AdminPageHeader title="공지사항" />
 
       <div className="bg-white border border-gray-100 shadow-sm mb-10">
@@ -176,17 +189,28 @@ const AdminNoticePage = () => {
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">공지 목록</h2>
             <span className="text-xs text-gray-400">총 {totalElements}건</span>
           </div>
-          <button
-            onClick={onOpenWriteModal}
-            disabled={!hasEditPermission}
-            className={`px-4 py-2 text-xs transition-colors
-              ${hasEditPermission
-                ? "text-white bg-blue-700 hover:bg-blue-800"
-                : "text-gray-300 bg-gray-100 cursor-not-allowed"
-              }`}
-          >
-            + 공지 작성
-          </button>
+          {/* ✅ 정렬 드롭다운 + 공지 작성 버튼 */}
+          <div className="flex items-center gap-3">
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "desc" | "asc")}
+              className="text-xs text-gray-500 border-b border-gray-300 focus:border-blue-700 outline-none bg-transparent py-2 pr-1 cursor-pointer transition-colors"
+            >
+              <option value="desc">최신순</option>
+              <option value="asc">오래된순</option>
+            </select>
+            <button
+              onClick={onOpenWriteModal}
+              disabled={!hasEditPermission}
+              className={`px-4 py-2 text-xs transition-colors
+                ${hasEditPermission
+                  ? "text-white bg-blue-700 hover:bg-blue-800"
+                  : "text-gray-300 bg-gray-100 cursor-not-allowed"
+                }`}
+            >
+              + 공지 작성
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -207,15 +231,19 @@ const AdminNoticePage = () => {
                     불러오는 중...
                   </td>
                 </tr>
-              ) : notices.length === 0 ? (
+              ) : sortedNotices.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-300">
                     등록된 공지사항이 없습니다
                   </td>
                 </tr>
               ) : (
-                notices.map((notice) => (
-                  <tr key={notice.noticeId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                sortedNotices.map((notice) => (
+                  <tr
+                    key={notice.noticeId}
+                    className={`border-b border-gray-50 hover:bg-gray-50 transition-colors
+                      ${notice.fixYn === "Y" ? "bg-blue-50/30" : ""}`} // ✅ 고정 공지 행 배경 강조
+                  >
                     <td className="px-5 py-3 text-gray-400">{notice.noticeId}</td>
                     <td className="px-5 py-3 cursor-pointer" onClick={() => setDetailNotice(notice)}>
                       <div className="flex items-center gap-2">
@@ -262,7 +290,6 @@ const AdminNoticePage = () => {
           </table>
         </div>
 
-        {/* ✅ 페이지네이션 UI 추가 */}
         {!isLoading && totalPages > 1 && (
           <div className="flex items-center justify-center gap-1 py-6 border-t border-gray-50 bg-white">
             <button
@@ -272,7 +299,6 @@ const AdminNoticePage = () => {
             >
               &lt;
             </button>
-            
             {[...Array(totalPages)].map((_, i) => (
               <button
                 key={i}
@@ -286,7 +312,6 @@ const AdminNoticePage = () => {
                 {i + 1}
               </button>
             ))}
-
             <button
               onClick={() => fetchNotices(currentPage + 1)}
               disabled={currentPage === totalPages - 1}

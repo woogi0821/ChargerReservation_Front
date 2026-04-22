@@ -10,9 +10,13 @@ const Stations = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [hoveredStationId, setHoveredStationId] = useState<string | null>(null);
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
+  
 
   // --- 모바일 전용 상태 추가 ---
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(true);
+
+  // ✅ 원의 중심 좌표 (검색 기준점) - 지역재검색/내위치 버튼 클릭 시에만 업데이트
+  const [circleCenter, setCircleCenter] = useState<{ lat: number; lng: number }>({ lat: 37.5665, lng: 126.978 });
 
   const [kakaoMap, setKakaoMap] = useState<any>(null);
   const [stationList, setStationList] = useState<any[]>([]);
@@ -35,7 +39,7 @@ const Stations = () => {
       baseStations
         .filter((s) => {
           if (statusFilter === "여유" && s.markerColor !== "green") return false;
-          if (statusFilter === "혼잡" && s.markerColor !== "amber") return false;
+          if (statusFilter === "보통" && s.markerColor !== "amber") return false;
           if (
             speedFilter === "급속" &&
             (!s.fastChargerStatus || s.fastChargerStatus.includes("0/0"))
@@ -89,6 +93,9 @@ const Stations = () => {
     const lat = center.getLat();
     const lng = center.getLng();
 
+    // ✅ 검색 시 원 중심 좌표 업데이트
+    setCircleCenter({ lat, lng });
+
     try {
       // 🚀 [Step 1] 가벼운 마커 데이터부터 즉시 로딩하여 지도에 뿌림
       const markerData = await stationService.getMarkersOnly(lat, lng);
@@ -129,6 +136,11 @@ const Stations = () => {
               item.statId === id ? { ...item, ...detailData } : item,
             ),
           );
+          setSearchResults((prev) =>
+          prev.map((item) =>
+            item.statId === id ? { ...item, ...detailData } : item,
+          ),
+        );
         }
       } catch (e) {
         console.error(e);
@@ -158,12 +170,9 @@ const Stations = () => {
     onHoverStation: setHoveredStationId,
     onSelectStation: (id: string) => handleSelectStation(id, kakaoMap),
     onLoadMore: () => {},
-    mapCenter: kakaoMap
-      ? {
-          lat: kakaoMap.getCenter().getLat(),
-          lng: kakaoMap.getCenter().getLng(),
-        }
-      : { lat: 37.5665, lng: 126.978 },
+    selectedStationId,
+    // ✅ 검색 기준점을 원의 중심으로 고정 (지도 이동해도 원 안에서만 검색)
+    mapCenter: circleCenter,
   };
 
   return (
@@ -255,17 +264,17 @@ const Stations = () => {
   className={`
     /* 모바일: 화면 전체, 하단바(z-[110])보다 낮아서 하단바에 가려짐 */
     fixed inset-0 w-full h-full bg-white
-    transition-transform duration-300 ease-in-out
+    transition-all duration-300 ease-in-out
     z-[100]
 
     /* 데스크탑: 사이드바 형태, x축으로 슬라이드 */
     md:absolute md:inset-auto md:top-0 md:left-0 md:h-full md:w-[400px] md:z-[120] md:border-r
 
-    /* 모바일 노출: y축 (위→아래), opacity 없이 translate만 사용 */
-    ${selectedStationId ? "translate-y-0 pointer-events-auto" : "-translate-y-full pointer-events-none"}
+    /* 모바일 노출: y축 (위→아래) */
+    ${selectedStationId ? "-translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"}
 
-    /* 데스크탑 노출: x축 (왼쪽→오른쪽) */
-    ${selectedStationId ? "md:translate-x-0 md:translate-y-0 md:visible md:w-[400px]" : "md:-translate-x-full md:translate-y-0 md:invisible md:w-0"}
+    /* 데스크탑 노출: x축 (왼쪽→오른쪽), 모바일 translate 덮어쓰기 */
+    ${selectedStationId ? "md:translate-x-0 md:translate-y-0 md:opacity-100 md:visible" : "md:-translate-x-full md:translate-y-0 md:opacity-0 md:invisible md:w-0"}
   `}
 >
   <div className="w-full h-full relative flex flex-col">

@@ -164,36 +164,49 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
   };
 
   // 📱 모바일 레이아웃 (생략 없이 로직 동일)
-  const MobileDetail = () => (
-    <div className={`flex flex-col h-full bg-white font-sans transition-transform duration-500 ease-out ${visible ? 'translate-y-0' : '-translate-y-full'}`}>
-      <div className="px-5 pt-4 pb-3 bg-blue-600 text-white relative shrink-0">
-        <button onClick={onClose} className="absolute top-3 right-4 p-1.5 hover:bg-blue-700 rounded-full transition-colors z-10">
-          <span className="text-lg text-white">✕</span>
+const MobileDetail = () => (
+    <div 
+      className={`fixed left-4 right-4 bg-white font-sans transition-all duration-500 ease-out z-[105] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.2)] flex flex-col overflow-hidden
+        /* 하단바 위로 80px 확 띄움 */
+        bottom-[45vh] 
+        top-[0%] 
+        ${visible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}
+    >
+      {/* 1. 원래 헤더 디자인 */}
+      <div className="px-5 pt-5 pb-4 bg-blue-600 text-white relative shrink-0">
+        <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-blue-700/50 rounded-full z-10 hover:bg-blue-800 transition-colors">
+          <span className="text-sm text-white">✕</span>
         </button>
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-[10px] font-bold bg-white text-blue-600 px-2 py-0.5 rounded shadow-sm">운영사</span>
           <span className="text-xs font-medium opacity-90">{station.bnm || '정보없음'}</span>
           <span className="ml-auto text-[11px] font-bold bg-blue-700/50 px-2 py-0.5 rounded whitespace-nowrap">{station.distance}km</span>
         </div>
-        <h2 className="text-lg font-bold leading-tight pr-8 mb-0.5">{station.statNm}</h2>
+        <h2 className="text-xl font-black leading-tight pr-8 mb-1">{station.statNm}</h2>
         <p className="text-xs opacity-80 leading-snug">{station.addr}</p>
-        {station.location && <p className="text-[11px] opacity-70 mt-0.5">📍 {station.location}</p>}
+        {station.location && <p className="text-[11px] opacity-70 mt-1">📍 {station.location}</p>}
       </div>
-      {/* 스크롤 영역: 버튼높이(~90px) + 하단바(60px) 만큼 pb 확보 */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar pb-[150px]">
-        <div className="px-4 py-3 border-b border-gray-100">
+
+      {/* 2. 스크롤 영역 (원래 있던 상세 정보들) */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-32">
+        {/* 상단 현황판 (급속/완속/요금) */}
+        <div className="px-4 py-4 border-b border-gray-100 bg-gray-50/30">
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-blue-50 rounded-xl p-3 flex flex-col items-center justify-center gap-1 text-blue-700">
+            <div className="bg-white border border-blue-100 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-blue-700 shadow-sm">
               <span className="text-lg">⚡</span>
               <span className="text-[10px] font-bold text-blue-500">급속</span>
-              <span className="text-xs font-black text-center leading-tight">{station.fastChargerStatus ? station.fastChargerStatus.replace('급속 ', '') : '정보없음'}</span>
+              <span className="text-xs font-black text-center leading-tight">
+                {station.fastChargerStatus ? station.fastChargerStatus.replace('급속 ', '') : '정보없음'}
+              </span>
             </div>
-            <div className="bg-green-50 rounded-xl p-3 flex flex-col items-center justify-center gap-1 text-green-700">
+            <div className="bg-white border border-green-100 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-green-700 shadow-sm">
               <span className="text-lg">🔌</span>
               <span className="text-[10px] font-bold text-green-500">완속</span>
-              <span className="text-xs font-black text-center leading-tight">{station.slowChargerStatus ? station.slowChargerStatus.replace('완속 ', '') : '정보없음'}</span>
+              <span className="text-xs font-black text-center leading-tight">
+                {station.slowChargerStatus ? station.slowChargerStatus.replace('완속 ', '') : '정보없음'}
+              </span>
             </div>
-            <div className="bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center gap-1">
+            <div className="bg-white border border-gray-100 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm">
               <span className="text-lg">💰</span>
               <span className="text-[10px] font-bold text-gray-400">요금</span>
               <div className="text-center">
@@ -203,41 +216,48 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
             </div>
           </div>
         </div>
-        <div className="px-4 py-3 space-y-2">
+
+        {/* 이용시간 및 주차 정보 (원래 디자인) */}
+        <div className="px-4 py-4 space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center gap-2 bg-white border border-gray-100 px-3 py-2.5 rounded-xl shadow-sm">
+            <div className="flex items-center gap-2 bg-white border border-gray-100 px-3 py-3 rounded-2xl shadow-sm">
               <span className="text-base">🔓</span>
               <div>
-                <p className="text-[9px] text-gray-400 font-bold">이용시간</p>
+                <p className="text-[9px] text-gray-400 font-bold uppercase">Operating</p>
                 <p className="text-xs font-bold text-gray-700">{station.useTime || '24시간'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-white border border-gray-100 px-3 py-2.5 rounded-xl shadow-sm">
+            <div className="flex items-center gap-2 bg-white border border-gray-100 px-3 py-3 rounded-2xl shadow-sm">
               <span className="text-base">🅿️</span>
               <div>
-                <p className="text-[9px] text-gray-400 font-bold">주차</p>
+                <p className="text-[9px] text-gray-400 font-bold uppercase">Parking</p>
                 <p className="text-xs font-bold text-gray-700">{station.limitYn === 'Y' ? '제한' : '가능'} · {station.parkingFree === 'Y' ? '무료' : '유료'}</p>
               </div>
             </div>
           </div>
-          <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border ${hasRestriction ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
+
+          {/* 이용제한 정보 */}
+          <div className={`flex items-start gap-3 px-4 py-3 rounded-2xl border ${hasRestriction ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
             <span className="text-base mt-0.5">{hasRestriction ? '⚠️' : '✅'}</span>
             <div>
               <p className={`text-[9px] font-bold uppercase ${hasRestriction ? 'text-red-400' : 'text-green-400'}`}>이용제한</p>
-              <p className={`text-xs font-bold ${hasRestriction ? 'text-red-700' : 'text-green-700'}`}>{hasRestriction ? station.limitDetail : '제한없음'}</p>
+              <p className={`text-xs font-bold ${hasRestriction ? 'text-red-700' : 'text-green-700'}`}>
+                {hasRestriction ? station.limitDetail : '제한없음'}
+              </p>
             </div>
           </div>
         </div>
       </div>
-      {/* ✅ 버튼 fixed: 뷰포트 기준 하단바(60px) 바로 위에 고정 */}
-      <div className="fixed bottom-[60px] left-0 w-full z-[105] bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+
+      {/* 3. 액션 버튼 영역 (원래 로직 호출) */}
+      <div className="absolute bottom-0 left-0 w-full bg-white border-t border-gray-100 p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         {renderBottomAction()}
       </div>
     </div>
   );
 
   // 🖥️ 데스크탑 레이아웃 (생략 없이 로직 동일)
-  const DesktopDetail = () => (
+const DesktopDetail = () => (
     <div className={`flex flex-col h-full bg-white shadow-2xl border-l border-gray-100 font-sans transition-transform duration-500 ease-out ${visible ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="p-6 bg-blue-600 text-white relative shrink-0">
         <button onClick={onClose} className="absolute top-4 right-4 p-2 hover:bg-blue-700 rounded-full transition-colors z-10">
@@ -261,16 +281,31 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
           </div>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto custom-scrollbar pb-[150px]">
+
+      {/* ✅ 수정 포인트: overflow-y-auto는 유지하되 스크롤바 스타일을 숨김 */}
+      <div 
+        className="flex-1 overflow-y-auto pb-[150px]"
+        style={{
+          msOverflowStyle: 'none',  /* IE and Edge */
+          scrollbarWidth: 'none',   /* Firefox */
+        }}
+      >
+        {/* Webkit(Chrome, Safari)용 스타일은 CSS 파일에 추가하는 것이 좋지만, 
+            인라인으로 처리하기 어렵다면 아래 클래스명을 확인하세요. */}
         <div className="p-6 border-b border-gray-50">
-          <h3 className="text-sm font-extrabold text-gray-900 mb-4 flex items-center gap-2"><span className="w-1 h-4 bg-blue-600 rounded-full"></span>실시간 충전 현황</h3>
+          <h3 className="text-sm font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 bg-blue-600 rounded-full"></span>실시간 충전 현황
+          </h3>
           <div className={`flex ${hasFast && hasSlow ? 'flex-row' : 'flex-col items-center'} gap-2.5`}>
             {hasFast && <div className={`bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 flex items-center justify-center ${hasFast && hasSlow ? 'flex-1' : 'w-full max-w-[320px]'} text-blue-700`}>{formatStatusWithIcon(station.fastChargerStatus, '급속')}</div>}
             {hasSlow && <div className={`bg-green-50/50 p-4 rounded-xl border border-green-100/50 flex items-center justify-center ${hasFast && hasSlow ? 'flex-1' : 'w-full max-w-[320px]'} text-green-700`}>{formatStatusWithIcon(station.slowChargerStatus, '완속')}</div>}
           </div>
         </div>
+
         <div className="p-6 border-b border-gray-50 bg-gray-50/30">
-          <h3 className="text-sm font-extrabold text-gray-900 mb-4 flex items-center gap-2"><span className="w-1 h-4 bg-blue-600 rounded-full"></span>요금 정보 {station.season && `(${station.season})`}</h3>
+          <h3 className="text-sm font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 bg-blue-600 rounded-full"></span>요금 정보 {station.season && `(${station.season})`}
+          </h3>
           <div className="space-y-3">
             {hasFast && (
               <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
@@ -298,7 +333,9 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
             )}
           </div>
         </div>
+
         <div className="p-6 space-y-4">
+          {/* ... 이용시간, 주차, 제한사항 영역 (기존과 동일) ... */}
           <div className="flex items-center gap-4 bg-white border border-gray-100 p-4 rounded-xl shadow-sm">
             <span className="text-xl">🔓</span>
             <div>
@@ -323,6 +360,13 @@ const StationDetail = ({ station, onClose }: StationDetailProps) => {
         </div>
       </div>
       {renderBottomAction()}
+      
+      {/* 💡 CSS 영역: 크롬/사파리 스크롤바 숨기기용 스타일 태그 */}
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 

@@ -28,10 +28,11 @@ const canEditPenalty = (): boolean => {
 };
 
 const AdminPenaltyPage = () => {
-  const { setToastMessage } = useAuthStore(); // ✅ 추가
+  const { setToastMessage } = useAuthStore();
 
   const [penalties, setPenalties] = useState<Penalty[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc"); // ✅ 추가
 
   const hasEditPermission = canEditPenalty();
 
@@ -76,12 +77,18 @@ const AdminPenaltyPage = () => {
       );
       if (!response.ok) return;
       fetchPenalties();
-      // ✅ 추가
       setToastMessage("패널티가 취소되었습니다");
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
   };
+
+  // ✅ 정렬 적용
+  const sortedPenalties = [...penalties].sort((a, b) => {
+    const timeA = new Date(a.insertTime).getTime();
+    const timeB = new Date(b.insertTime).getTime();
+    return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
+  });
 
   return (
     <AdminLayout>
@@ -89,10 +96,22 @@ const AdminPenaltyPage = () => {
       <AdminPageHeader title="패널티 관리" />
 
       <div className="bg-white border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-          <div className="w-1 h-4 bg-blue-700" />
-          <h2 className="text-sm font-semibold text-gray-700 tracking-wide">패널티 목록</h2>
-          <span className="text-xs text-gray-400">총 {penalties.length}건</span>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          {/* ✅ justify-between으로 변경 */}
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-4 bg-blue-700" />
+            <h2 className="text-sm font-semibold text-gray-700 tracking-wide">패널티 목록</h2>
+            <span className="text-xs text-gray-400">총 {sortedPenalties.length}건</span>
+          </div>
+          {/* ✅ 정렬 드롭다운 추가 */}
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as "desc" | "asc")}
+            className="text-xs text-gray-500 border-b border-gray-300 focus:border-blue-700 outline-none bg-transparent py-2 pr-1 cursor-pointer transition-colors"
+          >
+            <option value="desc">최신순</option>
+            <option value="asc">오래된순</option>
+          </select>
         </div>
 
         <div className="overflow-x-auto">
@@ -116,14 +135,14 @@ const AdminPenaltyPage = () => {
                     불러오는 중...
                   </td>
                 </tr>
-              ) : penalties.length === 0 ? (
+              ) : sortedPenalties.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-300">
                     패널티 내역이 없습니다
                   </td>
                 </tr>
               ) : (
-                penalties.map((penalty) => {
+                sortedPenalties.map((penalty) => {
                   const style = penaltyStatusStyles[penalty.status]
                     ?? { label: penalty.status, badge: "bg-gray-100 text-gray-500" };
                   return (
