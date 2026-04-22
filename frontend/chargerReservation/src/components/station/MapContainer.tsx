@@ -32,8 +32,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
   const mapInstance = useRef<any>(null);
   const clustererRef = useRef<any>(null);
   const circleRef = useRef<any>(null);
-  
-  // ✅ 원의 중심을 고정하기 위한 Ref
   const circleCenterRef = useRef<any>(null);
   
   const markersMap = useRef<Map<string, { overlay: any; element: HTMLElement }>>(new Map());
@@ -50,15 +48,12 @@ const MapContainer: React.FC<MapContainerProps> = ({
     return () => clearTimeout(timer);
   }, [rawStations]);
 
-  // 내 위치 이동 함수
   const handleMoveToCurrentLocation = () => {
     if (!mapInstance.current) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const moveLatLon = new window.kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
         mapInstance.current.panTo(moveLatLon);
-        
-        // 내 위치로 이동 후 검색할 때도 원의 중심 업데이트
         circleCenterRef.current = moveLatLon;
         onSearch(mapInstance.current);
       },
@@ -66,7 +61,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
     );
   };
 
-  // 지도 초기화
   useEffect(() => {
     window.selectStationFromMap = (id: string) => onSelectStation(id);
 
@@ -78,33 +72,43 @@ const MapContainer: React.FC<MapContainerProps> = ({
     script.onload = () => {
       window.kakao.maps.load(() => {
         if (!mapRef.current) return;
-
         const map = new window.kakao.maps.Map(mapRef.current, {
           center: new window.kakao.maps.LatLng(37.5665, 126.978),
           level: 5,
         });
-
         mapInstance.current = map;
+        window.kakao.maps.event.addListener(map, 'zoom_changed', () => setMapLevel(map.getLevel()));
 
-        window.kakao.maps.event.addListener(map, 'zoom_changed', () => {
-          setMapLevel(map.getLevel());
-        });
-
+        // ✅ 보내주신 자료 반영: 클러스터러 핵심 설정
         clustererRef.current = new window.kakao.maps.MarkerClusterer({
           map,
-          averageCenter: true,
-          minLevel: 6,
-          minClusterSize: 2,
+          averageCenter: true,    // 시각적 중심 강조
+          minLevel: 6,           // 클러스터링 시작 레벨
+          gridSize: 60,          // 격자 크기
+          disableClickZoom: true // ⭐ 자동 확대를 막고 우리가 직접 제어
+        });
+
+        // ✅ 클러스터 클릭 시 강조 및 부드러운 이동 로직 추가
+        window.kakao.maps.event.addListener(clustererRef.current, 'clusterclick', (cluster: any) => {
+          const el = cluster._element;
+          if (el) {
+            el.style.transition = 'all 0.3s ease';
+            el.style.transform = 'scale(1.5)';
+            el.style.filter = 'brightness(1.1) drop-shadow(0 0 10px rgba(37, 99, 235, 0.7))';
+          }
+          
+          setTimeout(() => {
+            const currentLevel = map.getLevel();
+            map.setLevel(currentLevel - 1, { anchor: cluster.getCenter(), animate: true });
+          }, 200);
         });
 
         onMapInit(map);
         setIsMapLoaded(true);
-
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             const moveLatLon = new window.kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
             map.setCenter(moveLatLon);
-            // 초기 로딩 시 원 중심 설정
             circleCenterRef.current = moveLatLon;
             onSearch(map);
           },
@@ -117,27 +121,16 @@ const MapContainer: React.FC<MapContainerProps> = ({
     };
   }, []);
 
-  // 마커 및 클러스터 업데이트 로직
   useEffect(() => {
     const map = mapInstance.current;
     if (!map || !isMapLoaded || !clustererRef.current) return;
 
-    // 1. 반경 원 업데이트 (고정된 좌표 사용)
     if (circleRef.current) circleRef.current.setMap(null);
-    
-    // circleCenterRef에 값이 있으면 사용하고, 없으면 현재 맵 중심 사용
     const center = circleCenterRef.current || map.getCenter();
 
     circleRef.current = new window.kakao.maps.Circle({
-      center: center,
-      radius: 1500,
-      strokeWeight: 2,
-      strokeColor: '#4A90E2',
-      strokeOpacity: 0.8,
-      strokeStyle: 'dashed',
-      fillColor: '#E1F0FF',
-      fillOpacity: 0.4,
-      zIndex: 1
+      center, radius: 1500, strokeWeight: 2, strokeColor: '#4A90E2', strokeOpacity: 0.8,
+      strokeStyle: 'dashed', fillColor: '#E1F0FF', fillOpacity: 0.4, zIndex: 1
     });
     circleRef.current.setMap(map);
 
@@ -151,25 +144,27 @@ const MapContainer: React.FC<MapContainerProps> = ({
 
     deferredStations.forEach((item) => {
       const key = `${item.lat}_${item.lng}`;
-      if (!positionMap.has(key)) {
-        positionMap.set(key, []);
-      }
+      if (!positionMap.has(key)) positionMap.set(key, []);
       positionMap.get(key)!.push(item);
     });
 
     positionMap.forEach((group) => {
       group.forEach((item, index) => {
-        const offset = index * 0.0001;
-        const lat = item.lat + offset;
-        const lng = item.lng + offset;
+        let lat = item.lat;
+        let lng = item.lng;
+        if (group.length > 1) {
+          const count = group.length;
+          const radius = Math.min(0.00005 + count * 0.000005, 0.00015);
+          const angle = (2 * Math.PI * index) / count - Math.PI / 2;
+          lat = item.lat + radius * Math.cos(angle);
+          lng = item.lng + radius * Math.sin(angle);
+        }
 
         let markerObj = markersMap.current.get(item.statId);
-
         if (!markerObj) {
           const container = document.createElement('div');
           container.style.cursor = 'pointer';
           container.onclick = () => window.selectStationFromMap(item.statId);
-
           container.innerHTML = `
             <div class="marker-wrapper" style="display:flex; flex-direction:column; align-items:center; transition: transform 0.2s;">
               <div style="width:30px; height:36px; position:relative;">
@@ -181,33 +176,23 @@ const MapContainer: React.FC<MapContainerProps> = ({
               </div>
               <div class="occupancy-label" style="margin-top:4px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:bold; white-space:nowrap; border:1px solid transparent;"></div>
             </div>`;
-
           const overlay = new window.kakao.maps.CustomOverlay({
             position: new window.kakao.maps.LatLng(lat, lng),
-            content: container,
-            yAnchor: 0.9,
+            content: container, yAnchor: 0.9,
           });
-
           markerObj = { overlay, element: container };
           markersMap.current.set(item.statId, markerObj);
         }
 
         markerObj.overlay.setPosition(new window.kakao.maps.LatLng(lat, lng));
-
         const isVisible = filteredIds.has(item.statId);
         markerObj.element.style.display = isVisible ? 'block' : 'none';
 
         if (isVisible) {
           const isSelected = selectedStationId === item.statId;
           const isHovered = hoveredStationId === item.statId;
-
-          const colorMap: any = {
-            green: "#22C55E", amber: "#F59E0B", red: "#EF4444", black: "#1F2937", gray: "#94A3B8"
-          };
-
-          const bgColor = item.warningLevel === 'TOTAL'
-            ? colorMap.black
-            : (colorMap[item.markerColor] || colorMap.gray);
+          const colorMap: any = { green: "#22C55E", amber: "#F59E0B", red: "#EF4444", black: "#1F2937", gray: "#94A3B8" };
+          const bgColor = item.warningLevel === 'TOTAL' ? colorMap.black : (colorMap[item.markerColor] || colorMap.gray);
 
           const wrapper = markerObj.element.querySelector('.marker-wrapper') as HTMLElement;
           const svg = markerObj.element.querySelector('.marker-svg') as HTMLElement;
@@ -222,11 +207,8 @@ const MapContainer: React.FC<MapContainerProps> = ({
           label.style.color = (isSelected || isHovered) ? 'white' : '#333';
           label.style.borderColor = bgColor;
 
-          if (mapLevel >= 6) {
-            markerObj.overlay.setMap(null);
-          } else {
-            markerObj.overlay.setMap(map);
-          }
+          if (mapLevel >= 6) markerObj.overlay.setMap(null);
+          else markerObj.overlay.setMap(map);
 
           markerObj.overlay.setZIndex(isSelected ? 100 : (isHovered ? 50 : 1));
 
@@ -236,12 +218,15 @@ const MapContainer: React.FC<MapContainerProps> = ({
               position: new window.kakao.maps.LatLng(lat, lng),
               image: transparentImage,
             });
-            window.kakao.maps.event.addListener(kakaoMarker, 'click', () => {
-              window.selectStationFromMap(item.statId);
-            });
+            // ✅ 강조용 이름표 주입 (방어용으로 2가지 이름 모두 사용)
+            kakaoMarker.stationId = String(item.statId);
+            kakaoMarker.statId = String(item.statId);
+
+            window.kakao.maps.event.addListener(kakaoMarker, 'click', () => window.selectStationFromMap(item.statId));
             kakaoMarkersMap.current.set(item.statId, kakaoMarker);
           } else {
             kakaoMarker.setPosition(new window.kakao.maps.LatLng(lat, lng));
+            kakaoMarker.stationId = String(item.statId);
           }
           markersToCluster.push(kakaoMarker);
         } else {
@@ -251,47 +236,96 @@ const MapContainer: React.FC<MapContainerProps> = ({
     });
 
     clustererRef.current.clear();
-    if (markersToCluster.length > 0) {
-      clustererRef.current.addMarkers(markersToCluster);
-    }
-
+    if (markersToCluster.length > 0) clustererRef.current.addMarkers(markersToCluster);
   }, [deferredStations, filteredIds, selectedStationId, hoveredStationId, isMapLoaded, mapLevel]);
 
+  // ✅ [클러스터 사이드바 호버 강조 로직]
+useEffect(() => {
+    // 1. 기초 환경 체크 (하나라도 없으면 실행 안 함)
+    if (!isMapLoaded || !clustererRef.current) return;
 
-  
+    const highlightLogic = () => {
+      try {
+        const clusterer = clustererRef.current;
+        // 카카오 내부 배열에 접근 (가장 확실한 방법)
+        const clusters = clusterer._clusters || (typeof clusterer.getClusters === 'function' ? clusterer.getClusters() : []);
+        
+        if (!clusters || clusters.length === 0) return;
+
+        clusters.forEach((cluster: any) => {
+          // 엘리먼트를 가져오는 경로를 단계별로 체크 (에러 방지)
+          let el: HTMLElement | null = null;
+          if (cluster._element) el = cluster._element;
+          else if (cluster.getClusterMarker) {
+            const marker = cluster.getClusterMarker();
+            if (marker && marker.getContent) el = marker.getContent();
+          }
+
+          if (!el) return;
+
+          // 초기화
+          el.style.transition = 'all 0.2s ease-out';
+          el.style.zIndex = '10';
+
+          if (hoveredStationId) {
+            const markers = cluster.getMarkers ? cluster.getMarkers() : [];
+            const isTarget = markers.some((m: any) => {
+              const mId = m.stationId || m.statId;
+              return mId && String(mId).trim() === String(hoveredStationId).trim();
+            });
+
+            if (isTarget) {
+              el.style.transform = 'scale(1.5)';
+              el.style.zIndex = '1000';
+              el.style.filter = 'brightness(1.1) drop-shadow(0 0 10px rgba(59, 130, 246, 0.8))';
+              return;
+            }
+          }
+          
+          // 초기 상태로 복구
+          el.style.transform = 'scale(1)';
+          el.style.filter = 'none';
+        });
+      } catch (e) {
+        console.error("클러스터 강조 중 오류 발생:", e);
+      }
+    };
+
+    // 실행 시점 조절
+    highlightLogic();
+    
+    // 지도가 움직였을 때도 대응하도록 리스너 추가
+    if (window.kakao && window.kakao.maps && window.kakao.maps.event) {
+      window.kakao.maps.event.addListener(clustererRef.current, 'clustered', highlightLogic);
+    }
+
+    return () => {
+      if (clustererRef.current && window.kakao?.maps?.event) {
+        window.kakao.maps.event.removeListener(clustererRef.current, 'clustered', highlightLogic);
+      }
+    };
+  }, [hoveredStationId, isMapLoaded, deferredStations]);
+
   return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full" />
-
-      {/* ✅ 이 지역 재검색 버튼: 클릭 시 원의 중심 좌표 업데이트 */}
-      {!selectedStationId && isMapLoaded && (
+      {isMapLoaded && (
         <button
           onClick={() => {
             circleCenterRef.current = mapInstance.current.getCenter();
             onSearch(mapInstance.current);
           }}
-          className={`absolute left-1/2 -translate-x-1/2 z-[150]
-          px-6 py-2.5 rounded-full font-bold shadow-xl transition-all duration-200
-          active:scale-90 active:shadow-md active:bg-blue-50
-          hover:bg-blue-50 hover:shadow-2xl
-          bg-white text-blue-600 border-2 border-blue-500
-          ${isMobileSheetOpen ? 'bottom-[52%]' : 'bottom-[80px]'} md:bottom-10`}
+          className={`absolute left-1/2 -translate-x-1/2 z-[150] px-6 py-2.5 rounded-full font-bold shadow-xl transition-all duration-200 active:scale-90 active:shadow-md active:bg-blue-50 hover:bg-blue-50 hover:shadow-2xl bg-white text-blue-600 border-2 border-blue-500 ${selectedStationId ? 'hidden md:block md:ml-[200px]' : 'block'} ${isMobileSheetOpen ? 'bottom-[52%]' : 'bottom-[80px]'} md:bottom-10`}
         >
           🔄 이 지역 재검색
         </button>
       )}
-
-      {/* ✅ 내 위치 버튼: 클릭 시 애니메이션 추가 */}
-      {!selectedStationId && (
-        <button
-          onClick={handleMoveToCurrentLocation}
-          className={`absolute right-6 z-[150] p-3 rounded-xl shadow-lg border bg-white
-          transition-all duration-200 active:scale-90 active:bg-gray-100 hover:shadow-xl
-          ${isMobileSheetOpen ? 'bottom-[calc(50vh+20px)]' : 'bottom-[80px]'} md:bottom-10`}
-        >
-          <span className="text-xl inline-block active:rotate-12 transition-transform">🎯</span>
-        </button>
-      )}
+      <button
+        onClick={handleMoveToCurrentLocation}
+        className={`absolute right-6 z-[150] p-3 rounded-xl shadow-lg border bg-white transition-all duration-200 active:scale-90 active:bg-gray-100 hover:shadow-xl ${selectedStationId ? 'hidden md:block' : 'block'} ${isMobileSheetOpen ? 'bottom-[calc(50vh+20px)]' : 'bottom-[80px]'} md:bottom-10`}
+      >
+        🎯
+      </button>
     </div>
   );
 };

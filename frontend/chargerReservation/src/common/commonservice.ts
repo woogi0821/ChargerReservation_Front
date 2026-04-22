@@ -64,7 +64,7 @@ common.interceptors.response.use(
     }
 
     const originalRequest = error.config;
-    const skipUrls = ["/member/login", "/member/find-id", "/member/find-pw", "/member/refresh"];
+    const skipUrls = ["/member/login", "/member/logout", "/member/join", "/member/find-id", "/member/find-pw", "/member/refresh"];
     
     if (skipUrls.some(url => originalRequest?.url?.includes(url))) {
       return Promise.reject(error); 
