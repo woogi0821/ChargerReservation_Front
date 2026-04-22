@@ -34,13 +34,14 @@ const canEditMember = (): boolean => {
 };
 
 const AdminMemberPage = () => {
-  const { setToastMessage } = useAuthStore(); // ✅ 추가
+  const { setToastMessage } = useAuthStore();
 
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [activeTab, setActiveTab] = useState<"NORMAL" | "ADMIN">("NORMAL");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc"); // ✅ 추가
 
   const hasEditPermission = canEditMember();
 
@@ -85,7 +86,6 @@ const AdminMemberPage = () => {
       if (!response.ok) return;
       fetchMembers();
       setSelectedMember(null);
-      // ✅ 추가
       setToastMessage(statusMessages[newStatus] ?? "회원 상태가 변경되었습니다");
     } catch (error) {
       console.error("서버 연결 실패", error);
@@ -96,9 +96,14 @@ const AdminMemberPage = () => {
     activeTab === "NORMAL" ? m.memberGrade === "N" : m.memberGrade === "Y"
   );
 
-  const filteredMembers = tabFiltered.filter((m) =>
-    m.name?.includes(searchQuery) || m.email?.includes(searchQuery)
-  );
+  // ✅ 검색 + 정렬 적용
+  const filteredMembers = tabFiltered
+    .filter((m) => m.name?.includes(searchQuery) || m.email?.includes(searchQuery))
+    .sort((a, b) => {
+      const timeA = new Date(a.insertTime).getTime();
+      const timeB = new Date(b.insertTime).getTime();
+      return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
+    });
 
   return (
     <AdminLayout>
@@ -112,13 +117,24 @@ const AdminMemberPage = () => {
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">회원 목록</h2>
             <span className="text-xs text-gray-400">총 {filteredMembers.length}명</span>
           </div>
-          <input
-            type="text"
-            placeholder="이름 또는 이메일 검색"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-56 px-3 py-2 text-sm border-b border-gray-300 focus:border-blue-700 outline-none transition-colors placeholder:text-gray-300 tracking-wide"
-          />
+          {/* ✅ 정렬 드롭다운 + 검색창 */}
+          <div className="flex items-center gap-3">
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "desc" | "asc")}
+              className="text-xs text-gray-500 border-b border-gray-300 focus:border-blue-700 outline-none bg-transparent py-2 pr-1 cursor-pointer transition-colors"
+            >
+              <option value="desc">최신순</option>
+              <option value="asc">오래된순</option>
+            </select>
+            <input
+              type="text"
+              placeholder="이름 또는 이메일 검색"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-56 px-3 py-2 text-sm border-b border-gray-300 focus:border-blue-700 outline-none transition-colors placeholder:text-gray-300 tracking-wide"
+            />
+          </div>
         </div>
 
         <div className="flex border-b border-gray-100">
@@ -159,19 +175,20 @@ const AdminMemberPage = () => {
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">연락처</th>
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">패널티</th>
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">상태</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">가입일</th> {/* ✅ 추가 */}
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">관리</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-300">
+                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-300">
                     불러오는 중...
                   </td>
                 </tr>
               ) : filteredMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-300">
+                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-300">
                     {searchQuery ? "검색 결과가 없습니다" : "회원이 없습니다"}
                   </td>
                 </tr>
@@ -194,6 +211,9 @@ const AdminMemberPage = () => {
                         <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>
                           {style.label}
                         </span>
+                      </td>
+                      <td className="px-5 py-3 text-gray-400 text-xs"> {/* ✅ 추가 */}
+                        {member.insertTime?.slice(0, 10)}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">

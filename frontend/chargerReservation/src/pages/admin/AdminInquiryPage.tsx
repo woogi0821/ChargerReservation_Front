@@ -35,8 +35,8 @@ const AdminInquiryPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
   const [answerContent, setAnswerContent] = useState("");
-  // ✅ 추가 — 수정 모드 상태
   const [isEditMode, setIsEditMode] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc"); // ✅ 추가
 
   const hasAnswerPermission = canAnswerInquiry();
 
@@ -68,7 +68,7 @@ const AdminInquiryPage = () => {
     if (!hasAnswerPermission) return;
     setSelectedInquiry(inquiry);
     setAnswerContent(inquiry.answerContent ?? "");
-    setIsEditMode(false); // ✅ 모달 열 때 수정 모드 초기화
+    setIsEditMode(false);
   };
 
   const onCloseModal = () => {
@@ -77,7 +77,6 @@ const AdminInquiryPage = () => {
     setIsEditMode(false);
   };
 
-  // ✅ 답변 등록 (PENDING)
   const onSubmitAnswer = async () => {
     if (!selectedInquiry || !answerContent.trim()) return;
     try {
@@ -102,7 +101,6 @@ const AdminInquiryPage = () => {
     }
   };
 
-  // ✅ 추가 — 답변 수정 (ANSWERED)
   const onUpdateAnswer = async () => {
     if (!selectedInquiry || !answerContent.trim()) return;
     try {
@@ -127,6 +125,13 @@ const AdminInquiryPage = () => {
     }
   };
 
+  // ✅ 정렬 적용
+  const sortedInquiries = [...inquiries].sort((a, b) => {
+    const timeA = new Date(a.insertTime).getTime();
+    const timeB = new Date(b.insertTime).getTime();
+    return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
+  });
+
   return (
     <AdminLayout>
 
@@ -139,15 +144,27 @@ const AdminInquiryPage = () => {
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">문의 목록</h2>
             <span className="text-xs text-gray-400">총 {inquiries.length}건</span>
           </div>
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
-              미답변 {inquiries.filter(i => i.status === "PENDING").length}건
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-              답변완료 {inquiries.filter(i => i.status === "ANSWERED").length}건
-            </span>
+          {/* ✅ 우측 영역: 통계 + 정렬 드롭다운 */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 text-xs text-gray-500">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
+                미답변 {inquiries.filter(i => i.status === "PENDING").length}건
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                답변완료 {inquiries.filter(i => i.status === "ANSWERED").length}건
+              </span>
+            </div>
+            {/* ✅ 정렬 드롭다운 추가 */}
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "desc" | "asc")}
+              className="text-xs text-gray-500 border-b border-gray-300 focus:border-blue-700 outline-none bg-transparent py-2 pr-1 cursor-pointer transition-colors"
+            >
+              <option value="desc">최신순</option>
+              <option value="asc">오래된순</option>
+            </select>
           </div>
         </div>
 
@@ -171,14 +188,14 @@ const AdminInquiryPage = () => {
                     불러오는 중...
                   </td>
                 </tr>
-              ) : inquiries.length === 0 ? (
+              ) : sortedInquiries.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-300">
                     등록된 문의가 없습니다
                   </td>
                 </tr>
               ) : (
-                inquiries.map((inquiry) => {
+                sortedInquiries.map((inquiry) => {
                   const style = inquiryStatusStyles[inquiry.status]
                     ?? { label: inquiry.status, badge: "bg-gray-100 text-gray-500" };
                   return (
@@ -265,7 +282,6 @@ const AdminInquiryPage = () => {
                       <span className="ml-2 text-green-500">답변완료</span>
                     )}
                   </label>
-                  {/* ✅ 추가 — 답변완료 상태일 때 수정 버튼 표시 */}
                   {selectedInquiry.status === "ANSWERED" && hasAnswerPermission && (
                     <button
                       onClick={() => setIsEditMode(!isEditMode)}
@@ -278,7 +294,6 @@ const AdminInquiryPage = () => {
                 <textarea
                   value={answerContent}
                   onChange={(e) => setAnswerContent(e.target.value)}
-                  // ✅ 수정 — PENDING 이거나 수정 모드일 때만 입력 가능
                   disabled={selectedInquiry.status === "ANSWERED" && !isEditMode}
                   placeholder={selectedInquiry.status === "PENDING" ? "답변 내용을 입력하세요" : ""}
                   rows={4}
@@ -292,7 +307,6 @@ const AdminInquiryPage = () => {
             </div>
 
             <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
-              {/* ✅ PENDING → 답변 등록 */}
               {selectedInquiry.status === "PENDING" && (
                 <button
                   onClick={onSubmitAnswer}
@@ -301,7 +315,6 @@ const AdminInquiryPage = () => {
                   답변 등록
                 </button>
               )}
-              {/* ✅ 추가 — ANSWERED + 수정 모드 → 수정 완료 */}
               {selectedInquiry.status === "ANSWERED" && isEditMode && (
                 <button
                   onClick={onUpdateAnswer}

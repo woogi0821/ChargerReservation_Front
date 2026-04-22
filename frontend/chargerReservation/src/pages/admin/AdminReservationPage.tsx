@@ -43,11 +43,12 @@ const canEditReservation = (): boolean => {
 };
 
 const AdminReservationPage = () => {
-  const { setToastMessage } = useAuthStore(); // ✅ 추가
+  const { setToastMessage } = useAuthStore();
 
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc"); // ✅ 추가
 
   const hasEditPermission = canEditReservation();
 
@@ -92,16 +93,22 @@ const AdminReservationPage = () => {
       );
       if (!response.ok) return;
       fetchReservations();
-      // ✅ 추가
       setToastMessage("예약이 강제취소 되었습니다");
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
   };
 
-  const filteredReservations = activeFilter === "all"
-    ? reservations
-    : reservations.filter((r) => r.status === activeFilter);
+  // ✅ 필터 + 정렬 적용
+  const filteredReservations = (
+    activeFilter === "all"
+      ? reservations
+      : reservations.filter((r) => r.status === activeFilter)
+  ).sort((a, b) => {
+    const timeA = new Date(a.startTime).getTime();
+    const timeB = new Date(b.startTime).getTime();
+    return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
+  });
 
   return (
     <AdminLayout>
@@ -115,6 +122,15 @@ const AdminReservationPage = () => {
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">예약 목록</h2>
             <span className="text-xs text-gray-400">총 {filteredReservations.length}건</span>
           </div>
+          {/* ✅ 정렬 드롭다운 추가 */}
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as "desc" | "asc")}
+            className="text-xs text-gray-500 border-b border-gray-300 focus:border-blue-700 outline-none bg-transparent py-2 pr-1 cursor-pointer transition-colors"
+          >
+            <option value="desc">최신순</option>
+            <option value="asc">오래된순</option>
+          </select>
         </div>
 
         <div className="flex border-b border-gray-100">
