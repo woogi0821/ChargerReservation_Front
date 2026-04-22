@@ -19,10 +19,8 @@ interface PrivateRouteProps {
 // ─────────────────────────────────────────────
 
 const getIsAdmin = (): boolean => {
-  // 임시 — localStorage 에서 토큰 꺼내서 확인
-  // 실제 구현 시 JWT 토큰의 role 필드 확인으로 교체
-  const token = localStorage.getItem("adminToken");
-  return !!token;
+  const adminRole = localStorage.getItem("adminRole");
+  return !!adminRole && adminRole.trim() !== "";
 };
 
 // ─────────────────────────────────────────────
