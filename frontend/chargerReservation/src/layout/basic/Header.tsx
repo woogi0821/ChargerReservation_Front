@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AuthService from "../../services/AuthService";
 import { useEffect, useState } from "react";
 import notificationService from "../../services/notificationService";
-import type { NotificationResponseDto } from "../../types/notification";
+import type { NotificationResponseDto } from "../../services/notificationService";
 import { Badge } from "../../components/common/badge";
 
 const Header = () => {
@@ -52,19 +52,18 @@ const Header = () => {
         );
       }
       setIsNotiOpen(false);
-      // /reservations 는 마이페이지 내 예약 탭으로 이동
-      if (
-        noti.targetUrl === "/reservations" ||
-        noti.targetUrl.startsWith("/reservations")
-      ) {
-        navigate("/mypage", { state: { tab: "reservations" } });
-      } else {
-        navigate(noti.targetUrl);
-      }
+// 🎯 백엔드에서 보낸 NotiType에 따라 이동 경로 분기
+        if (noti.notiType === "RESERVATION") {
+            navigate("/mypage", { state: { tab: "reservations" } });
+        } else if (noti.notiType === "PENALTY" || noti.notiType === "NOSHOW") {
+            navigate("/mypage", { state: { tab: "penalty" } });
+        } else {
+            navigate(noti.targetUrl);
+        }
     } catch (error) {
-      console.error("알림 처리 에러:", error);
+        console.error("알림 처리 에러:", error);
     }
-  };
+};
 
   const handleLogout = async () => {
     if (!window.confirm("로그아웃 하시겠습니까?")) return;
