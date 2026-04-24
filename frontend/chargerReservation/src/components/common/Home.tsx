@@ -4,15 +4,17 @@ import Button from "./Button";
 import { useModal } from "../../hook/useModal";
 import { sendPenaltySms } from "../../services/smsService"; // 🎯 추가
 
-export default function Home() {
-  const { isOpen, open, close } = useModal();
 
-  const userData = {
-    name: "홍길동",
-    phone: "01034441086", // 실제 테스트 시 본인 번호(나중에 DB에서 가져오는 형태로 변경)
-    penaltyReason: "어제 노쇼(No-Show)",
-    restrictUntil: "오늘 23:59"
-  };
+interface UserDataProps {
+  memberId: number;
+  name: string;
+  phone: string;
+  penaltyReason: string;
+  restrictUntil: string;
+}
+export default function Home({ userData }: { userData: UserDataProps }) {
+  const { isOpen, open, close } = useModal();
+  if (!userData) return null;
 
 // 🎯 문자 발송함수
   const handleConfirm = async () => {
