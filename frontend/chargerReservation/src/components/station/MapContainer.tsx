@@ -79,16 +79,14 @@ const MapContainer: React.FC<MapContainerProps> = ({
         mapInstance.current = map;
         window.kakao.maps.event.addListener(map, 'zoom_changed', () => setMapLevel(map.getLevel()));
 
-        // ✅ 보내주신 자료 반영: 클러스터러 핵심 설정
         clustererRef.current = new window.kakao.maps.MarkerClusterer({
           map,
-          averageCenter: true,    // 시각적 중심 강조
-          minLevel: 6,           // 클러스터링 시작 레벨
-          gridSize: 60,          // 격자 크기
-          disableClickZoom: true // ⭐ 자동 확대를 막고 우리가 직접 제어
+          averageCenter: true,
+          minLevel: 6,
+          gridSize: 60,
+          disableClickZoom: true
         });
 
-        // ✅ 클러스터 클릭 시 강조 및 부드러운 이동 로직 추가
         window.kakao.maps.event.addListener(clustererRef.current, 'clusterclick', (cluster: any) => {
           const el = cluster._element;
           if (el) {
@@ -96,7 +94,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
             el.style.transform = 'scale(1.5)';
             el.style.filter = 'brightness(1.1) drop-shadow(0 0 10px rgba(37, 99, 235, 0.7))';
           }
-          
           setTimeout(() => {
             const currentLevel = map.getLevel();
             map.setLevel(currentLevel - 1, { anchor: cluster.getCenter(), animate: true });
@@ -218,10 +215,8 @@ const MapContainer: React.FC<MapContainerProps> = ({
               position: new window.kakao.maps.LatLng(lat, lng),
               image: transparentImage,
             });
-            // ✅ 강조용 이름표 주입 (방어용으로 2가지 이름 모두 사용)
             kakaoMarker.stationId = String(item.statId);
             kakaoMarker.statId = String(item.statId);
-
             window.kakao.maps.event.addListener(kakaoMarker, 'click', () => window.selectStationFromMap(item.statId));
             kakaoMarkersMap.current.set(item.statId, kakaoMarker);
           } else {
@@ -239,31 +234,24 @@ const MapContainer: React.FC<MapContainerProps> = ({
     if (markersToCluster.length > 0) clustererRef.current.addMarkers(markersToCluster);
   }, [deferredStations, filteredIds, selectedStationId, hoveredStationId, isMapLoaded, mapLevel]);
 
-  // ✅ [클러스터 사이드바 호버 강조 로직]
-useEffect(() => {
-    // 1. 기초 환경 체크 (하나라도 없으면 실행 안 함)
+  useEffect(() => {
     if (!isMapLoaded || !clustererRef.current) return;
 
     const highlightLogic = () => {
       try {
         const clusterer = clustererRef.current;
-        // 카카오 내부 배열에 접근 (가장 확실한 방법)
         const clusters = clusterer._clusters || (typeof clusterer.getClusters === 'function' ? clusterer.getClusters() : []);
-        
         if (!clusters || clusters.length === 0) return;
 
         clusters.forEach((cluster: any) => {
-          // 엘리먼트를 가져오는 경로를 단계별로 체크 (에러 방지)
           let el: HTMLElement | null = null;
           if (cluster._element) el = cluster._element;
           else if (cluster.getClusterMarker) {
             const marker = cluster.getClusterMarker();
             if (marker && marker.getContent) el = marker.getContent();
           }
-
           if (!el) return;
 
-          // 초기화
           el.style.transition = 'all 0.2s ease-out';
           el.style.zIndex = '10';
 
@@ -273,7 +261,6 @@ useEffect(() => {
               const mId = m.stationId || m.statId;
               return mId && String(mId).trim() === String(hoveredStationId).trim();
             });
-
             if (isTarget) {
               el.style.transform = 'scale(1.5)';
               el.style.zIndex = '1000';
@@ -281,8 +268,6 @@ useEffect(() => {
               return;
             }
           }
-          
-          // 초기 상태로 복구
           el.style.transform = 'scale(1)';
           el.style.filter = 'none';
         });
@@ -291,10 +276,8 @@ useEffect(() => {
       }
     };
 
-    // 실행 시점 조절
     highlightLogic();
-    
-    // 지도가 움직였을 때도 대응하도록 리스너 추가
+
     if (window.kakao && window.kakao.maps && window.kakao.maps.event) {
       window.kakao.maps.event.addListener(clustererRef.current, 'clustered', highlightLogic);
     }
@@ -306,58 +289,61 @@ useEffect(() => {
     };
   }, [hoveredStationId, isMapLoaded, deferredStations]);
 
-return (
+  return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full" />
-      
-      {isMapLoaded && (
-        <button
-          onClick={() => {
-            circleCenterRef.current = mapInstance.current.getCenter();
-            onSearch(mapInstance.current);
-          }}
-          className={`
-            absolute left-1/2 -translate-x-1/2 z-[150] 
-            px-6 py-2.5 rounded-full font-bold shadow-xl 
-            transition-all duration-300 /* 이동을 부드럽게 */
-            active:scale-90 active:shadow-md active:bg-blue-50 
-            hover:bg-blue-50 hover:shadow-2xl bg-white text-blue-600 border-2 border-blue-500 
-            
-            /* 상세페이지 열림 여부에 따른 노출 제어 */
-            ${selectedStationId ? 'hidden md:block md:ml-[200px]' : 'block'} 
-            
-            /* 모바일 높이 대응 핵심 */
-            ${isMobileSheetOpen 
-              ? 'bottom-[calc(50vh+20px)]' /* 열렸을 때: 시트(50vh) 위 20px */
-              : 'bottom-[145px]'}           /* 닫혔을 때: GNB(65)+핸들바(60)+여백(20) = 145px */
-            
-            md:bottom-10 /* 데스크탑 위치 고정 */
-          `}
-        >
-          🔄 이 지역 재검색
-        </button>
-      )}
 
-      <button
-        onClick={handleMoveToCurrentLocation}
-        className={`
-          absolute right-6 z-[150] 
-          p-3 rounded-xl shadow-lg border bg-white 
-          transition-all duration-300 
-          active:scale-90 active:bg-gray-100 hover:shadow-xl 
-          
-          ${selectedStationId ? 'hidden md:block' : 'block'} 
-          
-          /* 재검색 버튼과 동일한 높이 로직 적용 */
-          ${isMobileSheetOpen 
-            ? 'bottom-[calc(50vh+20px)]' 
-            : 'bottom-[145px]'} 
-            
-          md:bottom-10
-        `}
-      >
-        🎯
-      </button>
+      {isMapLoaded && (
+        <>
+          {/* ✅ 재검색 버튼 — 상세 열리면 상단, 아니면 시트 위 */}
+          <button
+            onClick={() => {
+              circleCenterRef.current = mapInstance.current.getCenter();
+              onSearch(mapInstance.current);
+            }}
+            className={`
+              absolute left-1/2 -translate-x-1/2 z-[150]
+              px-6 py-2.5 rounded-full font-bold shadow-xl
+              transition-all duration-300
+              active:scale-90 active:shadow-md active:bg-blue-50
+              hover:bg-blue-50 hover:shadow-2xl
+              bg-white text-blue-600 border-2 border-blue-500
+
+              ${selectedStationId
+                // ✅ 상세 열렸을 때 — 모바일: 지도 상단, 데스크탑: 중앙 하단
+                ? 'top-4 md:top-auto md:bottom-10 md:left-1/2 md:ml-[200px]'
+                // 상세 닫혔을 때 — 기존 시트 위 위치
+                : isMobileSheetOpen
+                  ? 'bottom-[calc(50vh+85px)] md:bottom-10'
+                  : 'bottom-[145px] md:bottom-10'
+              }
+            `}
+          >
+            🔄 이 지역 재검색
+          </button>
+
+          {/* ✅ 현재위치 버튼 — 상세 열리면 상단, 아니면 시트 위 */}
+          <button
+            onClick={handleMoveToCurrentLocation}
+            className={`
+              absolute right-6 z-[150]
+              p-3 rounded-xl shadow-lg border bg-white
+              transition-all duration-300
+              active:scale-90 active:bg-gray-100 hover:shadow-xl
+
+              ${selectedStationId
+                // ✅ 상세 열렸을 때 — 모바일: 지도 상단
+                ? 'top-4 md:top-auto md:bottom-10'
+                : isMobileSheetOpen
+                  ? 'bottom-[calc(50vh+85px)] md:bottom-10'
+                  : 'bottom-[145px] md:bottom-10'
+              }
+            `}
+          >
+            🎯
+          </button>
+        </>
+      )}
     </div>
   );
 };
