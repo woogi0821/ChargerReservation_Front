@@ -6,6 +6,8 @@ import { useAuthStore } from "../../store/useAuthStore";
 interface Penalty {
   penaltyId: number;
   memberId: string;
+  name: string;      
+  phone: string;   
   reservationId: number;
   carNumber: string;
   reason: string;
