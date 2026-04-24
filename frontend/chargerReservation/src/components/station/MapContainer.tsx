@@ -306,23 +306,55 @@ useEffect(() => {
     };
   }, [hoveredStationId, isMapLoaded, deferredStations]);
 
-  return (
+return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full" />
+      
       {isMapLoaded && (
         <button
           onClick={() => {
             circleCenterRef.current = mapInstance.current.getCenter();
             onSearch(mapInstance.current);
           }}
-          className={`absolute left-1/2 -translate-x-1/2 z-[150] px-6 py-2.5 rounded-full font-bold shadow-xl transition-all duration-200 active:scale-90 active:shadow-md active:bg-blue-50 hover:bg-blue-50 hover:shadow-2xl bg-white text-blue-600 border-2 border-blue-500 ${selectedStationId ? 'hidden md:block md:ml-[200px]' : 'block'} ${isMobileSheetOpen ? 'bottom-[52%]' : 'bottom-[80px]'} md:bottom-10`}
+          className={`
+            absolute left-1/2 -translate-x-1/2 z-[150] 
+            px-6 py-2.5 rounded-full font-bold shadow-xl 
+            transition-all duration-300 /* 이동을 부드럽게 */
+            active:scale-90 active:shadow-md active:bg-blue-50 
+            hover:bg-blue-50 hover:shadow-2xl bg-white text-blue-600 border-2 border-blue-500 
+            
+            /* 상세페이지 열림 여부에 따른 노출 제어 */
+            ${selectedStationId ? 'hidden md:block md:ml-[200px]' : 'block'} 
+            
+            /* 모바일 높이 대응 핵심 */
+            ${isMobileSheetOpen 
+              ? 'bottom-[calc(50vh+20px)]' /* 열렸을 때: 시트(50vh) 위 20px */
+              : 'bottom-[145px]'}           /* 닫혔을 때: GNB(65)+핸들바(60)+여백(20) = 145px */
+            
+            md:bottom-10 /* 데스크탑 위치 고정 */
+          `}
         >
           🔄 이 지역 재검색
         </button>
       )}
+
       <button
         onClick={handleMoveToCurrentLocation}
-        className={`absolute right-6 z-[150] p-3 rounded-xl shadow-lg border bg-white transition-all duration-200 active:scale-90 active:bg-gray-100 hover:shadow-xl ${selectedStationId ? 'hidden md:block' : 'block'} ${isMobileSheetOpen ? 'bottom-[calc(50vh+20px)]' : 'bottom-[80px]'} md:bottom-10`}
+        className={`
+          absolute right-6 z-[150] 
+          p-3 rounded-xl shadow-lg border bg-white 
+          transition-all duration-300 
+          active:scale-90 active:bg-gray-100 hover:shadow-xl 
+          
+          ${selectedStationId ? 'hidden md:block' : 'block'} 
+          
+          /* 재검색 버튼과 동일한 높이 로직 적용 */
+          ${isMobileSheetOpen 
+            ? 'bottom-[calc(50vh+20px)]' 
+            : 'bottom-[145px]'} 
+            
+          md:bottom-10
+        `}
       >
         🎯
       </button>
