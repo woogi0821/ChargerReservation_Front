@@ -25,10 +25,8 @@ const Header = () => {
 
   const displayName = isAdmin ? (adminName ?? "관리자") : (memberName ?? "");
 
-  // 알림 로딩 + SSE 실시간 연결
   useEffect(() => {
     if (loggedIn && !isAdmin) {
-      // [A] 기존 알림 목록 가져오기
       const fetchNotis = async () => {
         try {
           const response = await notificationService.getMyNotifications();
@@ -43,7 +41,6 @@ const Header = () => {
       };
       fetchNotis();
 
-      // [B] 실시간 SSE 연결
       const loginId = localStorage.getItem("loginId");
       if (!loginId) {
         console.warn("loginId가 없어 SSE 연결을 건너뜁니다.");
@@ -72,7 +69,6 @@ const Header = () => {
         eventSource.close();
       };
 
-      // [C] 클린업
       return () => {
         console.log("🔌 SSE 연결을 안전하게 종료합니다.");
         eventSource.close();
@@ -80,7 +76,6 @@ const Header = () => {
     }
   }, [loggedIn, isAdmin]);
 
-  // 사이드바 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) {
@@ -93,7 +88,6 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMobileMenuOpen]);
 
-  // 사이드바 열릴 때 스크롤 방지
   useEffect(() => {
     if (isMobileMenuOpen) {
       document.body.style.overflow = "hidden";
@@ -227,11 +221,74 @@ const Header = () => {
             )}
           </div>
 
-          <button className="lg:hidden flex flex-col gap-1.5 p-2 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-            <span className="w-5 h-0.5 bg-zinc-600 rounded-full block" />
-            <span className="w-5 h-0.5 bg-zinc-600 rounded-full block" />
-            <span className="w-5 h-0.5 bg-zinc-600 rounded-full block" />
-          </button>
+          {/* ✅ 수정 — 종모양 + 햄버거 나란히 배치 */}
+          <div className="lg:hidden flex items-center gap-2">
+            {loggedIn && !isAdmin && (
+              <div className="relative">
+                <button
+                  onClick={() => setIsNotiOpen(!isNotiOpen)}
+                  className="p-2 text-zinc-600 hover:text-[#3B82F6] transition-colors relative"
+                >
+                  <span className="text-2xl">🔔</span>
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                {/* ✅ 모바일 알림 드롭다운 */}
+                {isNotiOpen && (
+                  <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden z-[100]">
+                    <div className="px-5 py-4 border-b border-zinc-50 bg-zinc-50/50 flex justify-between items-center">
+                      <span className="font-bold text-zinc-800">알림</span>
+                      <span className="text-xs text-zinc-400">최근 30일</span>
+                    </div>
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {notifications.length > 0 ? (
+                        notifications.map((noti) => (
+                          <div
+                            key={noti.notiId}
+                            onClick={() => handleNotiClick(noti)}
+                            className={`px-5 py-4 border-b border-zinc-50 cursor-pointer transition-colors hover:bg-blue-50/50 ${noti.isRead === "N" ? "bg-blue-50/20" : "bg-white"}`}
+                          >
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                {noti.isRead === "N" && <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />}
+                                <span className={`text-sm ${noti.isRead === "N" ? "font-bold text-zinc-900" : "text-zinc-600"}`}>{noti.title}</span>
+                              </div>
+                              <p className="text-sm text-zinc-500 leading-relaxed">{noti.message}</p>
+                              <span className="text-[11px] text-zinc-400 mt-1">방금 전</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-5 py-10 text-center">
+                          <span className="text-3xl mb-2 block">🔔</span>
+                          <p className="text-sm text-zinc-400">새로운 알림이 없습니다.</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3 bg-zinc-50/30 text-center border-t border-zinc-50">
+                      <button
+                        onClick={() => { setIsNotiOpen(false); navigate("/mypage"); }}
+                        className="text-xs text-zinc-500 hover:text-[#3B82F6] font-medium"
+                      >
+                        모든 알림 보기
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              className="flex flex-col gap-1.5 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              <span className="w-5 h-0.5 bg-zinc-600 rounded-full block" />
+              <span className="w-5 h-0.5 bg-zinc-600 rounded-full block" />
+              <span className="w-5 h-0.5 bg-zinc-600 rounded-full block" />
+            </button>
+          </div>
         </div>
       </header>
 
