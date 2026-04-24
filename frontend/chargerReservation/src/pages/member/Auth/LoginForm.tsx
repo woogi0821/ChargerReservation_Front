@@ -29,7 +29,6 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         loginId: data.loginId,
         loginPw: data.loginPw,
       });
-      // ✅ 수정 — memberId 추가
       const {
         accessToken,
         memberGrade,
@@ -42,13 +41,13 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
 
       login(memberGrade, accessToken);
 
-      // ✅ 수정 — memberId 추가
       localStorage.setItem("memberId", String(memberId ?? ""));
       localStorage.setItem("adminId", String(adminId ?? ""));
       localStorage.setItem("adminRole", adminRole ?? "");
       localStorage.setItem("adminPart", adminPart ?? "");
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("adminName", name ?? "");
+      localStorage.setItem("memberName", name ?? ""); // ✅ 추가
 
       setToastMessage(`환영합니다, ${name ?? "관리자"}님! 👋`);
 
@@ -84,7 +83,6 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     },
   });
 
-  // SVG 로고 컴포넌트
   const KakaoIcon = () => (
     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2 fill-[#191919]">
       <path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.558 1.707 4.8 4.315 6.055-.188.702-.682 2.545-.78 2.926-.12.479.178.474.374.345.154-.101 2.452-1.666 3.447-2.343.53.074 1.077.117 1.644.117 4.97 0 9-3.185 9-7.115S16.97 3 12 3z"/>
