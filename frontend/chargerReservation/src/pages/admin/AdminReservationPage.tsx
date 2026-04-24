@@ -42,13 +42,17 @@ const canEditReservation = (): boolean => {
   return adminRole === "SUPER" || adminPart === "RESERVATION" || adminPart === "ALL";
 };
 
+const PAGE_SIZE = 10;
+
 const AdminReservationPage = () => {
   const { setToastMessage } = useAuthStore();
 
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
-  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc"); // ✅ 추가
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  // ✅ 추가 — 페이지네이션
+  const [currentPage, setCurrentPage] = useState(1);
 
   const hasEditPermission = canEditReservation();
 
@@ -76,6 +80,11 @@ const AdminReservationPage = () => {
     fetchReservations();
   }, []);
 
+  // ✅ 필터 변경 시 페이지 초기화
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter, sortOrder]);
+
   const onForceCancel = async (reservationId: number) => {
     if (!hasEditPermission) return;
     if (!window.confirm("정말 강제 취소하시겠습니까?")) return;
@@ -99,7 +108,31 @@ const AdminReservationPage = () => {
     }
   };
 
-  // ✅ 필터 + 정렬 적용
+  // ✅ 추가 — 예약 삭제
+  const onDeleteReservation = async (reservationId: number) => {
+    if (!hasEditPermission) return;
+    if (!window.confirm("정말 삭제하시겠습니까? 삭제 후 복구가 불가능합니다.")) return;
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(
+        `http://localhost:8080/api/admin/reservations/${reservationId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        }
+      );
+      if (!response.ok) return;
+      fetchReservations();
+      setToastMessage("예약이 삭제되었습니다");
+    } catch (error) {
+      console.error("서버 연결 실패", error);
+    }
+  };
+
+  // 필터 + 정렬 적용
   const filteredReservations = (
     activeFilter === "all"
       ? reservations
@@ -110,19 +143,25 @@ const AdminReservationPage = () => {
     return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
   });
 
+  // ✅ 페이지네이션 계산
+  const totalPages = Math.ceil(filteredReservations.length / PAGE_SIZE);
+  const pagedReservations = filteredReservations.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
   return (
     <AdminLayout>
 
       <AdminPageHeader title="예약 관리" />
 
-      <div className="bg-white border border-gray-100 shadow-sm">
+      <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-1 h-4 bg-blue-700" />
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">예약 목록</h2>
             <span className="text-xs text-gray-400">총 {filteredReservations.length}건</span>
           </div>
-          {/* ✅ 정렬 드롭다운 추가 */}
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value as "desc" | "asc")}
@@ -176,18 +215,18 @@ const AdminReservationPage = () => {
                     불러오는 중...
                   </td>
                 </tr>
-              ) : filteredReservations.length === 0 ? (
+              ) : pagedReservations.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-300">
                     해당 상태의 예약이 없습니다
                   </td>
                 </tr>
               ) : (
-                filteredReservations.map((reservation) => {
+                pagedReservations.map((reservation) => {
                   const style = reservationStatusStyles[reservation.status]
                     ?? { label: reservation.status, badge: "bg-gray-100 text-gray-500" };
                   return (
-                    <tr key={reservation.reservationId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <tr key={reservation.reservationId} className="border-b border-gray-50 hover:bg-[#F8FAFF] transition-colors">
                       <td className="px-5 py-3 text-gray-400">{reservation.reservationId}</td>
                       <td className="px-5 py-3 text-gray-700 font-medium">{reservation.memberId}</td>
                       <td className="px-5 py-3 text-gray-600">{reservation.chargerId}</td>
@@ -195,24 +234,41 @@ const AdminReservationPage = () => {
                       <td className="px-5 py-3 text-gray-600">{reservation.startTime?.slice(0, 10)}</td>
                       <td className="px-5 py-3 text-gray-600">{reservation.endTime?.slice(0, 10)}</td>
                       <td className="px-5 py-3">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${style.badge}`}>
                           {style.label}
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        {(reservation.status === "RESERVED" || reservation.status === "CHARGING") && (
-                          <button
-                            onClick={() => onForceCancel(reservation.reservationId)}
-                            disabled={!hasEditPermission}
-                            className={`text-xs transition-colors
-                              ${hasEditPermission
-                                ? "text-red-500 hover:text-red-700"
-                                : "text-gray-300 cursor-not-allowed"
-                              }`}
-                          >
-                            강제취소
-                          </button>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {/* 강제취소 — RESERVED / CHARGING 만 */}
+                          {(reservation.status === "RESERVED" || reservation.status === "CHARGING") && (
+                            <button
+                              onClick={() => onForceCancel(reservation.reservationId)}
+                              disabled={!hasEditPermission}
+                              className={`text-xs transition-colors
+                                ${hasEditPermission
+                                  ? "text-orange-500 hover:text-orange-700"
+                                  : "text-gray-300 cursor-not-allowed"
+                                }`}
+                            >
+                              강제취소
+                            </button>
+                          )}
+                          {/* ✅ 추가 — 삭제 (CANCELED / NO_SHOW / COMPLETED 만) */}
+                          {(reservation.status === "CANCELED" || reservation.status === "NO_SHOW" || reservation.status === "COMPLETED") && (
+                            <button
+                              onClick={() => onDeleteReservation(reservation.reservationId)}
+                              disabled={!hasEditPermission}
+                              className={`text-xs transition-colors
+                                ${hasEditPermission
+                                  ? "text-red-500 hover:text-red-700"
+                                  : "text-gray-300 cursor-not-allowed"
+                                }`}
+                            >
+                              삭제
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -221,6 +277,39 @@ const AdminReservationPage = () => {
             </tbody>
           </table>
         </div>
+
+        {/* ✅ 추가 — 페이지네이션 */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-1 px-5 py-4 border-t border-gray-100">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              이전
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-colors
+                  ${currentPage === page
+                    ? "bg-blue-700 text-white"
+                    : "text-gray-500 border border-gray-200 hover:bg-gray-50"
+                  }`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              다음
+            </button>
+          </div>
+        )}
       </div>
 
     </AdminLayout>
