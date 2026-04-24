@@ -16,9 +16,23 @@ import { useModal } from "../../hook/useModal";
 import { useToast } from "../../hook/useToast";
 
 // ─────────────────────────────────────────
-// 페이지 탭
+// 타입
 // ─────────────────────────────────────────
-type PageTab = "profile" | "reservations";
+type PageTab = "reservations" | "inquiries";
+
+interface InquiryDto {
+  inquiryId: number;
+  memberId: number;
+  statId: string;
+  chargerId: string;
+  category: string;
+  title: string;
+  content: string;
+  status: string;
+  answerContent: string | null;
+  answerAt: string | null;
+  insertTime: string;
+}
 
 // ─────────────────────────────────────────
 // 예약 상태 설정
@@ -47,7 +61,7 @@ const TAB_FILTER: Record<ReservTab, ReservationStatus[]> = {
 };
 
 // ─────────────────────────────────────────
-// 날짜 포맷 헬퍼
+// 헬퍼
 // ─────────────────────────────────────────
 const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString("ko-KR", {
@@ -77,19 +91,12 @@ function ReservationCard({ item, onCancelClick }: ReservationCardProps) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all hover:shadow-md">
       <div className="flex">
-        <div
-          className="w-1 flex-shrink-0"
-          style={{ background: cfg.accent }}
-        />
+        <div className="w-1 flex-shrink-0" style={{ background: cfg.accent }} />
         <div className="flex-1 p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <Badge variant={cfg.variant} size="sm" className="mb-2">
-                {cfg.label}
-              </Badge>
-              <h3 className="font-black text-slate-800 text-base leading-tight mb-0.5 truncate">
-                {item.stationName}
-              </h3>
+              <Badge variant={cfg.variant} size="sm" className="mb-2">{cfg.label}</Badge>
+              <h3 className="font-black text-slate-800 text-base leading-tight mb-0.5 truncate">{item.stationName}</h3>
               <p className="text-xs text-slate-400 mb-3">📍 {item.stationAddress}</p>
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
                 <span>{item.chargerType === "RAPID" ? "⚡ 급속" : "🔌 완속"}</span>
@@ -97,7 +104,6 @@ function ReservationCard({ item, onCancelClick }: ReservationCardProps) {
                 <span>🕐 {fmtDateTime(item.startTime)}</span>
               </div>
             </div>
-
             <div className="flex flex-col items-end gap-2 flex-shrink-0">
               <span className="bg-blue-50 text-blue-600 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-100">
                 #{item.chargerId.slice(-4)}
@@ -111,9 +117,7 @@ function ReservationCard({ item, onCancelClick }: ReservationCardProps) {
                 </button>
               )}
               {item.status === "DONE" && item.actualEndTime && (
-                <span className="text-xs text-slate-400">
-                  완료 {fmtDateTime(item.actualEndTime)}
-                </span>
+                <span className="text-xs text-slate-400">완료 {fmtDateTime(item.actualEndTime)}</span>
               )}
             </div>
           </div>
@@ -139,9 +143,7 @@ function ReservEmpty({ tab }: { tab: ReservTab }) {
       <div className="text-5xl">{icon}</div>
       <p className="text-slate-400 text-sm font-medium text-center whitespace-pre-line">{text}</p>
       {tab === "upcoming" && (
-        <Button variant="primary" size="sm" onClick={() => navigate("/stations")}>
-          충전소 찾기
-        </Button>
+        <Button variant="primary" size="sm" onClick={() => navigate("/stations")}>충전소 찾기</Button>
       )}
     </div>
   );
@@ -152,19 +154,28 @@ function ReservEmpty({ tab }: { tab: ReservTab }) {
 // ─────────────────────────────────────────
 const MyPage = () => {
   const location = useLocation();
-  const initialTab = (location.state as { tab?: PageTab } | null)?.tab ?? "profile";
-  const [pageTab, setPageTab]           = useState<PageTab>(initialTab);
-  const [isEditing, setIsEditing]       = useState(false);
-  const [userInfo, setUserInfo]         = useState<IMember | null>(null);
+  const initialTab = (location.state as { tab?: PageTab } | null)?.tab ?? "reservations";
+  const [pageTab, setPageTab]     = useState<PageTab>(initialTab);
+  const [isEditing, setIsEditing] = useState(false);
+  const [userInfo, setUserInfo]   = useState<IMember | null>(null);
 
-  // 예약 관련 상태
+  // 예약 관련
   const [reservations, setReservations] = useState<MyReservationItem[]>([]);
   const [reservTab, setReservTab]       = useState<ReservTab>("upcoming");
   const [reservLoaded, setReservLoaded] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<MyReservationItem | null>(null);
 
+  // 문의 관련
+  const [inquiries, setInquiries]               = useState<InquiryDto[]>([]);
+  const [inquiryLoaded, setInquiryLoaded]       = useState(false);
+  const [isLoadingInquiries, setIsLoadingInquiries] = useState(false);
+  const [openInquiryIdx, setOpenInquiryIdx]     = useState<number | null>(null);
+
   const cancelModal = useModal();
   const { toast, hideToast, success: toastSuccess, error: toastError } = useToast();
+
+  const token    = localStorage.getItem("accessToken");
+  const memberId = localStorage.getItem("memberId") || "";
 
   // ── 회원 정보 조회 ───────────────────────
   useEffect(() => {
@@ -173,7 +184,7 @@ const MyPage = () => {
     }).catch((err) => console.error("회원 정보 로딩 실패:", err));
   }, []);
 
-  // ── 예약 목록 조회 (탭 첫 진입 시 1회) ──
+  // ── 예약 목록 조회 (첫 진입 시 1회) ─────
   useEffect(() => {
     if (pageTab !== "reservations" || reservLoaded) return;
     reservationService.getMyReservation()
@@ -187,14 +198,34 @@ const MyPage = () => {
       });
   }, [pageTab, reservLoaded]);
 
+  // ── 문의 목록 조회 (첫 진입 시 1회) ─────
+  useEffect(() => {
+    if (pageTab !== "inquiries" || inquiryLoaded) return;
+    if (!memberId) return;
+    setIsLoadingInquiries(true);
+    fetch(`http://localhost:8080/api/inquiries?memberId=${memberId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.ok ? res.json() : [])
+      .then((data) => {
+        setInquiries(data);
+        setInquiryLoaded(true);
+      })
+      .catch((err) => console.error("문의 목록 로딩 실패:", err))
+      .finally(() => setIsLoadingInquiries(false));
+  }, [pageTab, inquiryLoaded]);
+
   // ── 프로필 수정 폼 ───────────────────────
   const formik = useFormik({
     initialValues: {
-      loginId : userInfo?.loginId || "",
-      email   : userInfo?.email   || "",
-      name    : userInfo?.name    || "",
-      phone   : userInfo?.phone   || "",
-      loginPw : "",
+      loginId  : userInfo?.loginId || "",
+      email    : userInfo?.email   || "",
+      name     : userInfo?.name    || "",
+      phone    : userInfo?.phone   || "",
+      loginPw  : "",
       confirmPw: "",
     },
     validationSchema: updateValidation,
@@ -237,9 +268,8 @@ const MyPage = () => {
     }
   };
 
-  // ── 탭별 필터 ────────────────────────────
-  const filtered   = reservations.filter((r) => TAB_FILTER[reservTab].includes(r.status));
-  const tabCount   = (key: ReservTab) => reservations.filter((r) => TAB_FILTER[key].includes(r.status)).length;
+  const filtered = reservations.filter((r) => TAB_FILTER[reservTab].includes(r.status));
+  const tabCount = (key: ReservTab) => reservations.filter((r) => TAB_FILTER[key].includes(r.status)).length;
 
   if (!userInfo) {
     return (
@@ -263,9 +293,7 @@ const MyPage = () => {
               <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
                 <h2 className="text-2xl font-extrabold text-slate-800">{userInfo.name}</h2>
                 <span className={`px-2 py-1 text-[10px] rounded font-bold uppercase tracking-tighter ${
-                  userInfo.memberGrade === "Y"
-                    ? "bg-rose-50 text-rose-500"
-                    : "bg-blue-50 text-blue-500"
+                  userInfo.memberGrade === "Y" ? "bg-rose-50 text-rose-500" : "bg-blue-50 text-blue-500"
                 }`}>
                   {userInfo.memberGrade === "Y" ? "Admin" : "User"}
                 </span>
@@ -274,17 +302,53 @@ const MyPage = () => {
               <p className="text-slate-400 text-sm">{formatPhone(userInfo.phone)}</p>
             </div>
           </div>
-          {pageTab === "profile" && (
-            <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
-              {isEditing ? "수정 취소" : "프로필 수정"}
-            </Button>
-          )}
+          <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
+            {isEditing ? "수정 취소" : "프로필 수정"}
+          </Button>
         </div>
+
+        {/* ── 프로필 수정 폼 (버튼 눌렀을 때만 펼침) ─────────────────────── */}
+        {isEditing && (
+          <div className="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-slate-100">
+            <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
+              <span className="w-2 h-6 bg-blue-500 rounded-full" />
+              계정 정보 수정
+            </h3>
+            <input type="text"     name="username" value={formik.values.loginId} readOnly autoComplete="username"         style={{ display: "none" }} />
+            <input type="password" name="password"                               readOnly autoComplete="current-password" style={{ display: "none" }} />
+            <form id="profileForm" onSubmit={formik.handleSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <Input label="아이디"           id="loginId"   name="loginId"   value={formik.values.loginId}   readOnly autoComplete="username" />
+                <Input label="이메일"           id="email"     name="email"     value={formik.values.email}     readOnly autoComplete="email" />
+                <Input label="이름"             id="name"      name="name"      value={formik.values.name}      onChange={formik.handleChange} onBlur={formik.handleBlur} autoComplete="name"         error={formik.touched.name    ? formik.errors.name    : undefined} />
+                <Input label="전화번호"         id="phone"     name="phone"     value={formik.values.phone}     onChange={formik.handleChange} onBlur={formik.handleBlur} autoComplete="tel"          error={formik.touched.phone   ? formik.errors.phone   : undefined} placeholder="01000000000 (- 제외)" />
+                <Input label="새 비밀번호"      type="password" id="loginPw"   name="loginPw"   value={formik.values.loginPw}   onChange={formik.handleChange} onBlur={formik.handleBlur} autoComplete="new-password" error={formik.touched.loginPw   ? formik.errors.loginPw   : undefined} placeholder="8~15자 (영문, 숫자, 특수문자)" />
+                <Input label="새 비밀번호 확인" type="password" id="confirmPw" name="confirmPw" value={formik.values.confirmPw} onChange={formik.handleChange} onBlur={formik.handleBlur} autoComplete="new-password" error={formik.touched.confirmPw ? formik.errors.confirmPw : undefined} placeholder="비밀번호를 다시 입력하세요" />
+              </div>
+            </form>
+            <div className="border-t border-slate-100 mt-8 mb-6" />
+            <div className="flex flex-col md:flex-row justify-end gap-4">
+              <Button
+                type="button"
+                variant="danger"
+                className="px-8 py-4 rounded-2xl"
+                onClick={() => { if (window.confirm("정말 탈퇴하시겠습니까?")) console.log("탈퇴"); }}
+              >
+                회원 탈퇴
+              </Button>
+              <Button type="submit" form="profileForm" className="px-12 py-4 rounded-2xl shadow-lg shadow-blue-100">
+                저장
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* ── 페이지 탭 ───────────────────────────────────────────────────── */}
         <div className="flex border-b-2 border-slate-100">
-          {(["profile", "reservations"] as PageTab[]).map((key) => {
-            const label = key === "profile" ? "프로필" : "내 예약";
+          {([
+            { key: "reservations", label: "내 예약" },
+            { key: "inquiries",    label: "내 문의" },
+          ] as { key: PageTab; label: string }[]).map(({ key, label }) => {
             const isActive = pageTab === key;
             return (
               <button
@@ -303,58 +367,9 @@ const MyPage = () => {
           })}
         </div>
 
-        {/* ── 탭 1: 프로필 수정 ─────────────────────────────────────────── */}
-        {pageTab === "profile" && (
-          <div >
-            <div className="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-slate-100">
-              <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
-                <span className="w-2 h-6 bg-blue-500 rounded-full" />
-                계정 정보
-              </h3>
-
-              {/* 브라우저 자동완성 방지용 숨김 필드 */}
-              <input type="text"     name="username" value={formik.values.loginId} readOnly autoComplete="username"         style={{ display: "none" }} />
-              <input type="password" name="password"                               readOnly autoComplete="current-password" style={{ display: "none" }} />
-
-              <form id="profileForm" onSubmit={formik.handleSubmit}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                  <Input label="아이디"    id="loginId"   name="loginId"   value={formik.values.loginId}   readOnly autoComplete="username" />
-                  <Input label="이메일"    id="email"     name="email"     value={formik.values.email}     readOnly autoComplete="email" />
-                  <Input label="이름"      id="name"      name="name"      value={formik.values.name}      onChange={formik.handleChange} onBlur={formik.handleBlur} readOnly={!isEditing} autoComplete="name"         error={formik.touched.name    ? formik.errors.name    : undefined} />
-                  <Input label="전화번호"  id="phone"     name="phone"     value={formik.values.phone}     onChange={formik.handleChange} onBlur={formik.handleBlur} readOnly={!isEditing} autoComplete="tel"          error={formik.touched.phone   ? formik.errors.phone   : undefined} placeholder="01000000000 (- 제외)" />
-                  <Input label="새 비밀번호"      type="password" id="loginPw"   name="loginPw"   value={formik.values.loginPw}   onChange={formik.handleChange} onBlur={formik.handleBlur} readOnly={!isEditing} autoComplete="new-password" error={formik.touched.loginPw   ? formik.errors.loginPw   : undefined} placeholder="8~15자 (영문, 숫자, 특수문자)" />
-                  <Input label="새 비밀번호 확인" type="password" id="confirmPw" name="confirmPw" value={formik.values.confirmPw} onChange={formik.handleChange} onBlur={formik.handleBlur} readOnly={!isEditing} autoComplete="new-password" error={formik.touched.confirmPw ? formik.errors.confirmPw : undefined} placeholder="비밀번호를 다시 입력하세요" />
-                </div>
-              </form>
-
-              <div className="border-t border-slate-100 mt-8 mb-6" />
-
-              <div className="flex flex-col md:flex-row justify-end gap-4">
-                <Button
-                  type="button"
-                  variant="danger"
-                  className="px-8 py-4 rounded-2xl"
-                  onClick={() => { if (window.confirm("정말 탈퇴하시겠습니까?")) console.log("탈퇴"); }}
-                >
-                  회원 탈퇴
-                </Button>
-                <Button
-                  type="submit"
-                  form="profileForm"
-                  className="px-12 py-4 rounded-2xl shadow-lg shadow-blue-100"
-                >
-                  저장
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── 탭 2: 내 예약 ──────────────────────────────────────────────── */}
+        {/* ── 탭 1: 내 예약 ──────────────────────────────────────────────── */}
         {pageTab === "reservations" && (
           <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
-
-            {/* 내부 탭 */}
             <div className="flex border-b border-slate-100 mb-5">
               {RESERV_TABS.map((tab) => {
                 const count    = tabCount(tab.key);
@@ -382,8 +397,6 @@ const MyPage = () => {
                 );
               })}
             </div>
-
-            {/* 예약 목록 */}
             {!reservLoaded ? (
               <div className="flex justify-center items-center py-14">
                 <div className="w-8 h-8 rounded-full border-4 border-blue-200 border-t-blue-500 animate-spin" />
@@ -393,51 +406,120 @@ const MyPage = () => {
                 {filtered.length === 0
                   ? <ReservEmpty tab={reservTab} />
                   : filtered.map((item) => (
-                      <ReservationCard
-                        key={item.id}
-                        item={item}
-                        onCancelClick={handleCancelClick}
-                      />
+                      <ReservationCard key={item.id} item={item} onCancelClick={handleCancelClick} />
                     ))
                 }
               </div>
             )}
           </div>
         )}
-      </div>
 
-      {/* ── 취소 확인 모달 ─────────────────────────────────────────────────── */}
-      <Modal isOpen={cancelModal.isOpen} onClose={cancelModal.close} title="예약 취소" variant="danger">
-        {cancelTarget && (
-          <div className="flex flex-col gap-5">
-            <div className="bg-red-50 rounded-xl p-4 text-sm">
-              <p className="font-bold text-slate-800 mb-1">{cancelTarget.stationName}</p>
-              <p className="text-slate-500">
-                {fmtDateTime(cancelTarget.startTime)} · {cancelTarget.chargerType === "RAPID" ? "급속" : "완속"} · {cancelTarget.carNumber}
-              </p>
-            </div>
-            <p className="text-slate-500 text-sm text-center">
-              위 예약을 취소하시겠습니까?<br />
-              <span className="text-red-500 font-semibold">취소 후에는 되돌릴 수 없습니다.</span>
-            </p>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={cancelModal.close}>돌아가기</Button>
-              <Button variant="danger"  className="flex-1" onClick={handleCancelConfirm}>예약 취소</Button>
-            </div>
+        {/* ── 탭 2: 내 문의 ──────────────────────────────────────────────── */}
+        {pageTab === "inquiries" && (
+          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
+            <h3 className="text-base font-bold mb-5 flex items-center gap-2">
+              <span className="w-2 h-5 bg-blue-500 rounded-full" />
+              내 문의 내역
+            </h3>
+            {isLoadingInquiries ? (
+              <div className="flex justify-center items-center py-14">
+                <div className="w-8 h-8 rounded-full border-4 border-blue-200 border-t-blue-500 animate-spin" />
+              </div>
+            ) : inquiries.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-14 gap-3">
+                <div className="text-5xl">💬</div>
+                <p className="text-slate-400 text-sm">문의 내역이 없습니다.</p>
+                <Button variant="outline" size="sm" onClick={() => window.location.href = "/support"}>
+                  문의하러 가기
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y divide-slate-50">
+                {inquiries.map((inq, idx) => {
+                  const isOpen = openInquiryIdx === idx;
+                  return (
+                    <div key={inq.inquiryId} className="py-4">
+                      <button
+                        onClick={() => setOpenInquiryIdx(isOpen ? null : idx)}
+                        className="w-full flex items-start justify-between gap-3 text-left"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              inq.status === "답변완료"
+                                ? "bg-green-50 text-green-600 border-green-100"
+                                : "bg-amber-50 text-amber-500 border-amber-100"
+                            }`}>
+                              {inq.status}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">{inq.category}</span>
+                          </div>
+                          <p className="text-sm font-bold text-slate-700 truncate">{inq.title}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {new Date(inq.insertTime).toLocaleDateString("ko-KR")}
+                          </p>
+                        </div>
+                        <span className="text-slate-300 text-lg mt-1 flex-shrink-0">{isOpen ? "▲" : "▼"}</span>
+                      </button>
+
+                      {isOpen && (
+                        <div className="mt-3 space-y-3">
+                          {/* 문의 내용 */}
+                          <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-600 leading-relaxed border border-slate-100">
+                            {inq.content}
+                          </div>
+                          {/* 답변 */}
+                          {inq.answerContent ? (
+                            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                              <p className="text-[11px] font-bold text-blue-400 mb-1.5">💬 관리자 답변</p>
+                              <p className="text-sm text-blue-700 leading-relaxed">{inq.answerContent}</p>
+                              {inq.answerAt && (
+                                <p className="text-[10px] text-blue-300 mt-2 text-right">
+                                  {new Date(inq.answerAt).toLocaleString("ko-KR")}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-400 text-center py-2">아직 답변이 등록되지 않았습니다.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
+
+      </div>
+
+      {/* ── 예약 취소 확인 모달 ─────────────────────────────────────────── */}
+      <Modal
+        isOpen={cancelModal.isOpen}
+        onClose={cancelModal.close}
+        title="예약 취소"
+        actions={
+          <>
+            <Button variant="outline" onClick={cancelModal.close}>닫기</Button>
+            <Button variant="danger" onClick={handleCancelConfirm}>취소 확정</Button>
+          </>
+        }
+      >
+        <p className="text-slate-600 text-sm">
+          정말 이 예약을 취소하시겠습니까?<br />
+          <span className="text-slate-400 text-xs">취소 후에는 되돌릴 수 없습니다.</span>
+        </p>
       </Modal>
 
-      {/* ── 토스트 ──────────────────────────────────────────────────────────── */}
-      <Toast
-        variant={toast.variant}
-        position={toast.position}
-        isVisible={toast.isVisible}
-        onClose={hideToast}
-        hasCloseButton
-      >
-        {toast.message}
-      </Toast>
+      {/* ── 토스트 ──────────────────────────────────────────────────────── */}
+      {toast.visible && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+        />
+      )}
     </div>
   );
 };

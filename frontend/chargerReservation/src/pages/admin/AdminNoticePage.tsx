@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
-import { useAuthStore } from "../../store/useAuthStore"; // ✅ 추가
+import { useAuthStore } from "../../store/useAuthStore";
 
 interface Notice {
   noticeId: number;
@@ -32,14 +32,14 @@ const canEditNotice = (): boolean => {
 };
 
 const AdminNoticePage = () => {
-  const { setToastMessage } = useAuthStore(); // ✅ 추가
+  const { setToastMessage } = useAuthStore();
 
   const [notices, setNotices] = useState<Notice[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc"); // ✅ 추가
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
   const [modalMode, setModalMode] = useState<"write" | "edit" | null>(null);
   const [editNotice, setEditNotice] = useState<Notice | null>(null);
@@ -60,7 +60,6 @@ const AdminNoticePage = () => {
         },
       });
       if (!response.ok) return;
-
       const data = await response.json();
       setNotices(data.content);
       setTotalPages(data.totalPages);
@@ -77,7 +76,6 @@ const AdminNoticePage = () => {
     fetchNotices(0);
   }, []);
 
-  // ✅ 고정 공지 최상단 고정 + 등록일 정렬 (현재 페이지 내)
   const sortedNotices = [...notices].sort((a, b) => {
     if (a.fixYn === "Y" && b.fixYn !== "Y") return -1;
     if (a.fixYn !== "Y" && b.fixYn === "Y") return 1;
@@ -125,7 +123,7 @@ const AdminNoticePage = () => {
       if (!response.ok) return;
       fetchNotices(0);
       onCloseModal();
-      setToastMessage("공지사항이 등록되었습니다"); // ✅ 추가
+      setToastMessage("공지사항이 등록되었습니다");
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
@@ -149,7 +147,7 @@ const AdminNoticePage = () => {
       if (!response.ok) return;
       fetchNotices(currentPage);
       onCloseModal();
-      setToastMessage("공지사항이 수정되었습니다"); // ✅ 추가
+      setToastMessage("공지사항이 수정되었습니다");
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
@@ -172,7 +170,7 @@ const AdminNoticePage = () => {
       );
       if (!response.ok) return;
       fetchNotices(currentPage);
-      setToastMessage("공지사항이 삭제되었습니다"); // ✅ 추가
+      setToastMessage("공지사항이 삭제되었습니다");
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
@@ -189,7 +187,6 @@ const AdminNoticePage = () => {
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">공지 목록</h2>
             <span className="text-xs text-gray-400">총 {totalElements}건</span>
           </div>
-          {/* ✅ 정렬 드롭다운 + 공지 작성 버튼 */}
           <div className="flex items-center gap-3">
             <select
               value={sortOrder}
@@ -220,8 +217,10 @@ const AdminNoticePage = () => {
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-16">번호</th>
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">제목</th>
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-24">작성자</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-28">작성일</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-24">관리</th>
+                {/* ✅ w-28 → w-32 + whitespace-nowrap */}
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-32 whitespace-nowrap">작성일</th>
+                {/* ✅ w-24 → w-20 + whitespace-nowrap */}
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-20 whitespace-nowrap">관리</th>
               </tr>
             </thead>
             <tbody>
@@ -242,13 +241,13 @@ const AdminNoticePage = () => {
                   <tr
                     key={notice.noticeId}
                     className={`border-b border-gray-50 hover:bg-gray-50 transition-colors
-                      ${notice.fixYn === "Y" ? "bg-blue-50/30" : ""}`} // ✅ 고정 공지 행 배경 강조
+                      ${notice.fixYn === "Y" ? "bg-blue-50/30" : ""}`}
                   >
                     <td className="px-5 py-3 text-gray-400">{notice.noticeId}</td>
                     <td className="px-5 py-3 cursor-pointer" onClick={() => setDetailNotice(notice)}>
                       <div className="flex items-center gap-2">
                         {notice.fixYn === "Y" && (
-                          <span className="px-1.5 py-0.5 text-[10px] bg-blue-50 text-blue-700 font-bold rounded-sm border border-blue-100">고정</span>
+                          <span className="px-1.5 py-0.5 text-[10px] bg-blue-50 text-blue-700 font-bold rounded-sm border border-blue-100 whitespace-nowrap">고정</span>
                         )}
                         <span className="text-gray-700 font-medium hover:text-blue-700 transition-colors">
                           {notice.title}
@@ -256,8 +255,10 @@ const AdminNoticePage = () => {
                       </div>
                     </td>
                     <td className="px-5 py-3 text-gray-500">{notice.writerId}</td>
-                    <td className="px-5 py-3 text-gray-500">{notice.insertTime?.slice(0, 10)}</td>
-                    <td className="px-5 py-3">
+                    {/* ✅ whitespace-nowrap 추가 */}
+                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap">{notice.insertTime?.slice(0, 10)}</td>
+                    {/* ✅ whitespace-nowrap 추가 */}
+                    <td className="px-5 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => onOpenEditModal(notice)}

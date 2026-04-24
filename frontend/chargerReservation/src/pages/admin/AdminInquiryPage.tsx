@@ -36,7 +36,7 @@ const AdminInquiryPage = () => {
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
   const [answerContent, setAnswerContent] = useState("");
   const [isEditMode, setIsEditMode] = useState(false);
-  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc"); // ✅ 추가
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
   const hasAnswerPermission = canAnswerInquiry();
 
@@ -125,7 +125,6 @@ const AdminInquiryPage = () => {
     }
   };
 
-  // ✅ 정렬 적용
   const sortedInquiries = [...inquiries].sort((a, b) => {
     const timeA = new Date(a.insertTime).getTime();
     const timeB = new Date(b.insertTime).getTime();
@@ -144,7 +143,6 @@ const AdminInquiryPage = () => {
             <h2 className="text-sm font-semibold text-gray-700 tracking-wide">문의 목록</h2>
             <span className="text-xs text-gray-400">총 {inquiries.length}건</span>
           </div>
-          {/* ✅ 우측 영역: 통계 + 정렬 드롭다운 */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3 text-xs text-gray-500">
               <span className="flex items-center gap-1">
@@ -156,7 +154,6 @@ const AdminInquiryPage = () => {
                 답변완료 {inquiries.filter(i => i.status === "ANSWERED").length}건
               </span>
             </div>
-            {/* ✅ 정렬 드롭다운 추가 */}
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as "desc" | "asc")}
@@ -176,9 +173,10 @@ const AdminInquiryPage = () => {
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-28">카테고리</th>
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide">제목</th>
                 <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-24">회원 ID</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-28">작성일</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-24">상태</th>
-                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-24">관리</th>
+                {/* ✅ whitespace-nowrap 추가 */}
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-32 whitespace-nowrap">작성일</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-24 whitespace-nowrap">상태</th>
+                <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium tracking-wide w-20 whitespace-nowrap">관리</th>
               </tr>
             </thead>
             <tbody>
@@ -204,13 +202,14 @@ const AdminInquiryPage = () => {
                       <td className="px-5 py-3 text-gray-600">{inquiry.category}</td>
                       <td className="px-5 py-3 text-gray-700 font-medium">{inquiry.title}</td>
                       <td className="px-5 py-3 text-gray-600">{inquiry.memberId}</td>
-                      <td className="px-5 py-3 text-gray-500">{inquiry.insertTime?.slice(0, 10)}</td>
-                      <td className="px-5 py-3">
+                      {/* ✅ whitespace-nowrap 추가 */}
+                      <td className="px-5 py-3 text-gray-500 whitespace-nowrap">{inquiry.insertTime?.slice(0, 10)}</td>
+                      <td className="px-5 py-3 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs font-medium rounded-sm ${style.badge}`}>
                           {style.label}
                         </span>
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-3 whitespace-nowrap">
                         <button
                           onClick={() => onOpenAnswerModal(inquiry)}
                           disabled={!hasAnswerPermission}
