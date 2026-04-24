@@ -6,33 +6,23 @@ import GNB from "../../components/station/GNB";
 import MapContainer from "../../components/station/MapContainer";
 
 const Stations = () => {
-  // --- 기존 상태 유지 ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [hoveredStationId, setHoveredStationId] = useState<string | null>(null);
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
-  
-
-  // --- 모바일 전용 상태 추가 ---
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(true);
-
-  // ✅ 원의 중심 좌표 (검색 기준점) - 지역재검색/내위치 버튼 클릭 시에만 업데이트
   const [circleCenter, setCircleCenter] = useState<{ lat: number; lng: number }>({ lat: 37.5665, lng: 126.978 });
-
   const [kakaoMap, setKakaoMap] = useState<any>(null);
   const [stationList, setStationList] = useState<any[]>([]);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  // 필터 상태 유지
   const [speedFilter, setSpeedFilter] = useState("전체");
   const [statusFilter, setStatusFilter] = useState("전체");
   const [isParkingAvailable, setIsParkingAvailable] = useState(false);
   const [isParkingFree, setIsParkingFree] = useState(false);
   const [isNoRestriction, setIsNoRestriction] = useState(false);
 
-  // ✅ 필터 로직 (기존 로직 100% 보존)
   const baseStations = isSearchMode ? searchResults : stationList;
   const filteredIds = useMemo(() => {
     return new Set(
@@ -40,35 +30,19 @@ const Stations = () => {
         .filter((s) => {
           if (statusFilter === "여유" && s.markerColor !== "green") return false;
           if (statusFilter === "보통" && s.markerColor !== "amber") return false;
-          if (
-            speedFilter === "급속" &&
-            (!s.fastChargerStatus || s.fastChargerStatus.includes("0/0"))
-          )
-            return false;
-          if (
-            speedFilter === "완속" &&
-            (!s.slowChargerStatus || s.slowChargerStatus.includes("0/0"))
-          )
-            return false;
+          if (speedFilter === "급속" && (!s.fastChargerStatus || s.fastChargerStatus.includes("0/0"))) return false;
+          if (speedFilter === "완속" && (!s.slowChargerStatus || s.slowChargerStatus.includes("0/0"))) return false;
           if (isParkingAvailable && s.limitYn === "Y") return false;
           if (isParkingFree && s.parkingFree !== "Y") return false;
           if (isNoRestriction) {
             const ltd = (s.limitDetail ?? "").trim();
-            if (!["없음", "-", "해당없음", "null", ""].includes(ltd))
-              return false;
+            if (!["없음", "-", "해당없음", "null", ""].includes(ltd)) return false;
           }
           return true;
         })
         .map((s) => s.statId),
     );
-  }, [
-    baseStations,
-    statusFilter,
-    speedFilter,
-    isParkingAvailable,
-    isParkingFree,
-    isNoRestriction,
-  ]);
+  }, [baseStations, statusFilter, speedFilter, isParkingAvailable, isParkingFree, isNoRestriction]);
 
   const displayStations = useMemo(
     () => baseStations.filter((s) => filteredIds.has(s.statId)),
@@ -80,7 +54,6 @@ const Stations = () => {
     [baseStations, selectedStationId],
   );
 
-  // ✅ 검색 로직 최적화 (데이터 수급 방식 개선)
   const handleSearch = useCallback(async (map: any) => {
     if (!map) return;
     setKeyword("");
@@ -88,20 +61,13 @@ const Stations = () => {
     setIsSearchMode(false);
     setSelectedStationId(null);
     setIsLoading(true);
-
     const center = map.getCenter();
     const lat = center.getLat();
     const lng = center.getLng();
-
-    // ✅ 검색 시 원 중심 좌표 업데이트
     setCircleCenter({ lat, lng });
-
     try {
-      // 🚀 [Step 1] 가벼운 마커 데이터부터 즉시 로딩하여 지도에 뿌림
       const markerData = await stationService.getMarkersOnly(lat, lng);
-      setStationList(markerData); 
-
-      // 🚀 [Step 2] 무거운 목록 정보는 뒤따라오게 비동기 처리
+      setStationList(markerData);
       stationService.getStationsAround(lat, lng).then((listData) => {
         setStationList((prev) => {
           return prev.map((marker) => {
@@ -110,7 +76,6 @@ const Stations = () => {
           });
         });
       });
-
     } catch (error) {
       console.error("검색 실패:", error);
     } finally {
@@ -121,26 +86,14 @@ const Stations = () => {
   const handleSelectStation = useCallback(
     async (id: string, map: any) => {
       setSelectedStationId(id);
+      setIsMobileSheetOpen(true);
       if (!map) return;
       const center = map.getCenter();
       try {
-        const detailData = await stationService.getStationDetail(
-          id,
-          speedFilter,
-          center.getLat(),
-          center.getLng(),
-        );
+        const detailData = await stationService.getStationDetail(id, speedFilter, center.getLat(), center.getLng());
         if (detailData) {
-          setStationList((prev) =>
-            prev.map((item) =>
-              item.statId === id ? { ...item, ...detailData } : item,
-            ),
-          );
-          setSearchResults((prev) =>
-          prev.map((item) =>
-            item.statId === id ? { ...item, ...detailData } : item,
-          ),
-        );
+          setStationList((prev) => prev.map((item) => item.statId === id ? { ...item, ...detailData } : item));
+          setSearchResults((prev) => prev.map((item) => item.statId === id ? { ...item, ...detailData } : item));
         }
       } catch (e) {
         console.error(e);
@@ -148,6 +101,11 @@ const Stations = () => {
     },
     [speedFilter],
   );
+
+  const handleMobileDetailClose = () => {
+    setSelectedStationId(null);
+    setIsMobileSheetOpen(true);
+  };
 
   const sidebarProps = {
     stations: displayStations,
@@ -171,7 +129,6 @@ const Stations = () => {
     onSelectStation: (id: string) => handleSelectStation(id, kakaoMap),
     onLoadMore: () => {},
     selectedStationId,
-    // ✅ 검색 기준점을 원의 중심으로 고정 (지도 이동해도 원 안에서만 검색)
     mapCenter: circleCenter,
   };
 
@@ -190,16 +147,10 @@ const Stations = () => {
 
       <div
         className="hidden md:block absolute top-1/2 -translate-y-1/2 z-[110] transition-all duration-300"
-        style={{
-          left: 80 + (isSidebarOpen ? 380 : 0) + (selectedStationId ? 400 : 0),
-        }}
+        style={{ left: 80 + (isSidebarOpen ? 380 : 0) + (selectedStationId ? 400 : 0) }}
       >
         <button
-          onClick={() =>
-            selectedStationId
-              ? setSelectedStationId(null)
-              : setIsSidebarOpen((p) => !p)
-          }
+          onClick={() => selectedStationId ? setSelectedStationId(null) : setIsSidebarOpen((p) => !p)}
           className="bg-white border border-zinc-200 w-6 h-14 flex items-center justify-center rounded-r-lg shadow-md hover:bg-zinc-50"
         >
           <span className="text-zinc-400 text-[10px] font-bold">
@@ -220,105 +171,106 @@ const Stations = () => {
           isMobileSheetOpen={isMobileSheetOpen}
         />
 
-<div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur px-3 py-2 rounded-lg shadow-md border border-gray-200 flex items-center gap-2 flex-wrap max-w-[calc(100%-32px)] md:max-w-none">
-  {/* 여유 */}
-  <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2">
-    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-    <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">여유70</span>
-  </div>
+        {/* 범례 — 모바일 상세 열리면 숨김 */}
+        <div className={`absolute top-4 right-4 z-20 bg-white/95 backdrop-blur px-3 py-2 rounded-lg shadow-md border border-gray-200 flex items-center gap-2 flex-wrap max-w-[calc(100%-32px)] md:max-w-none
+          ${selectedStationId ? "hidden md:flex" : "flex"}`}
+        >
+          <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2">
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">여유70</span>
+          </div>
+          <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2">
+            <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+            <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">보통70~30</span>
+          </div>
+          <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">혼잡30</span>
+          </div>
+          <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2">
+            <div className="w-3 h-3 rounded-full bg-black"></div>
+            <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">전체고장</span>
+          </div>
+          <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2">
+            <div className="w-3.5 h-3.5 bg-red-500 rounded-full flex items-center justify-center text-[8px] text-white font-black leading-none shrink-0">!</div>
+            <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">고장</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-gray-400 shrink-0"></div>
+            <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">확인불가</span>
+          </div>
+        </div>
 
-  {/* 보통 */}
-  <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2">
-    <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-    <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">보통70~30</span>
-  </div>
+        {/* 데스크탑 전용 상세 패널 */}
+        <div
+          className={`
+            hidden md:block
+            absolute top-0 left-0 h-full w-[400px] z-[120] border-r
+            transition-all duration-300 ease-in-out
+            ${selectedStationId ? "translate-x-0 opacity-100 visible" : "-translate-x-full opacity-0 invisible w-0"}
+          `}
+        >
+          <div className="w-full h-full relative flex flex-col">
+            {selectedStationData && (
+              <StationDetail
+                station={selectedStationData}
+                onClose={() => setSelectedStationId(null)}
+              />
+            )}
+          </div>
+        </div>
 
-  {/* 혼잡 */}
-  <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2">
-    <div className="w-3 h-3 rounded-full bg-red-500"></div>
-    <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">혼잡30</span>
-  </div>
+        {/* ✅ 모바일 하단 시트 — bottom-[65px], 상세 모드 h-[58vh] 로 축소 */}
+        <div
+          className={`
+            md:hidden fixed left-0 w-full z-[110]
+            bg-white rounded-t-[2.5rem]
+            shadow-[0_-10px_30px_rgba(0,0,0,0.1)]
+            border-t border-gray-100
+            flex flex-col
+            transition-all duration-500 ease-in-out
+            bottom-[65px]
+            ${selectedStationId
+              ? "h-[58vh]"    // ✅ 72vh → 58vh 로 축소 (공백 제거)
+              : isMobileSheetOpen
+                ? "h-[50vh]"
+                : "h-[60px]"
+            }
+          `}
+        >
+          {/* 핸들바 */}
+          <div
+            className="w-full h-[52px] flex items-center justify-center shrink-0 cursor-pointer"
+            onClick={() => {
+              if (selectedStationId) {
+                handleMobileDetailClose();
+              } else {
+                setIsMobileSheetOpen(!isMobileSheetOpen);
+              }
+            }}
+          >
+            {selectedStationId ? (
+              <span className="text-blue-600 text-sm font-bold">← 목록으로</span>
+            ) : (
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+            )}
+          </div>
 
-  {/* 고장 (기존 유지) */}
-  <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2">
-    <div className="w-3 h-3 rounded-full bg-black"></div>
-    <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">전체고장</span>
-  </div>
-
-  {/* 고장있음 (!) - 새로 추가된 별도 항목 */}
-  <div className="flex items-center gap-1.5 border-r border-gray-200 pr-2">
-    <div className="w-3.5 h-3.5 bg-red-500 rounded-full flex items-center justify-center text-[8px] text-white font-black leading-none shrink-0">
-      !
-    </div>
-    <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">고장</span>
-  </div>
-
-  {/* 확인불가 */}
-  <div className="flex items-center gap-1.5">
-    <div className="w-3 h-3 rounded-full bg-gray-400 shrink-0"></div>
-    <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">확인불가</span>
-  </div>
-</div>
-
-<div
-  className={`
-    /* 모바일: 화면 전체, 하단바(z-[110])보다 낮아서 하단바에 가려짐 */
-    fixed inset-0 w-full h-full bg-white
-    transition-all duration-300 ease-in-out
-    z-[100]
-
-    /* 데스크탑: 사이드바 형태, x축으로 슬라이드 */
-    md:absolute md:inset-auto md:top-0 md:left-0 md:h-full md:w-[400px] md:z-[120] md:border-r
-
-    /* 모바일 노출: y축 (위→아래) */
-    ${selectedStationId ? "-translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"}
-
-    /* 데스크탑 노출: x축 (왼쪽→오른쪽), 모바일 translate 덮어쓰기 */
-    ${selectedStationId ? "md:translate-x-0 md:translate-y-0 md:opacity-100 md:visible" : "md:-translate-x-full md:translate-y-0 md:opacity-0 md:invisible md:w-0"}
-  `}
->
-  <div className="w-full h-full relative flex flex-col">
-    {selectedStationData && (
-      <StationDetail
-        station={selectedStationData}
-        onClose={() => setSelectedStationId(null)}
-      />
-    )}
-  </div>
-</div>
-
-
-
-<div
-  className={`
-    md:hidden fixed bottom-0 left-0 w-full /* 본체는 바닥에 고정 */
-    h-[50vh] bg-white z-[110]
-    rounded-t-[2.5rem]
-    shadow-[0_-10px_30px_rgba(0,0,0,0.1)]
-    border-t border-gray-100
-    flex flex-col
-    transition-transform duration-500 ease-in-out
-    /* 닫혔을 때: GNB 높이(65px)만큼만 남기고 내리는 게 아니라, 
-       GNB 높이 + 핸들바 높이만큼 위치를 계산해서 핸들바만 GNB 위로 노출 
-    */
-    ${isMobileSheetOpen 
-      ? "translate-y-0" 
-      : "translate-y-[calc(100%-125px)]"} /* 65px(GNB) + 60px(핸들바) = 125px */
-  `}
->
-  {/* 핸들바 영역: 이 부분이 GNB(65px) 바로 위에서 터치 포인트가 됩니다 */}
-  <div
-    className="w-full h-[60px] flex items-center justify-center shrink-0 cursor-pointer"
-    onClick={() => setIsMobileSheetOpen(!isMobileSheetOpen)}
-  >
-    <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
-  </div>
-
-  {/* 내부 목록: GNB에 가려지지 않도록 하단 패딩 부여 */}
-  <div className="flex-1 overflow-y-auto pb-[65px]">
-    <StationSidebar {...sidebarProps} />
-  </div>
-</div>
+          {/* 시트 내용 */}
+          <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+            {selectedStationId && selectedStationData ? (
+              <StationDetail
+                station={selectedStationData}
+                onClose={handleMobileDetailClose}
+                isMobileSheet={true}
+              />
+            ) : (
+              <div className="flex-1 overflow-y-auto pb-4">
+                <StationSidebar {...sidebarProps} />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
