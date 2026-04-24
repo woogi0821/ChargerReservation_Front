@@ -289,29 +289,36 @@ const Stations = () => {
 
 
 
-        <div
-          className={`
-            md:hidden fixed bottom-0 left-0 w-full
-            h-[50vh] bg-white z-[110]
-            rounded-t-[2.5rem]
-            shadow-[0_-10px_30px_rgba(0,0,0,0.1)]
-            border-t border-gray-100
-            flex flex-col
-            transition-transform duration-500 ease-in-out
-            ${isMobileSheetOpen ? "translate-y-0" : "translate-y-[calc(100%-60px)]"}
-          `}
-        >
-          <div
-            className="w-full h-[60px] flex items-center justify-center shrink-0 cursor-pointer"
-            onClick={() => setIsMobileSheetOpen(!isMobileSheetOpen)}
-          >
-            <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
-          </div>
+<div
+  className={`
+    md:hidden fixed bottom-0 left-0 w-full /* 본체는 바닥에 고정 */
+    h-[50vh] bg-white z-[110]
+    rounded-t-[2.5rem]
+    shadow-[0_-10px_30px_rgba(0,0,0,0.1)]
+    border-t border-gray-100
+    flex flex-col
+    transition-transform duration-500 ease-in-out
+    /* 닫혔을 때: GNB 높이(65px)만큼만 남기고 내리는 게 아니라, 
+       GNB 높이 + 핸들바 높이만큼 위치를 계산해서 핸들바만 GNB 위로 노출 
+    */
+    ${isMobileSheetOpen 
+      ? "translate-y-0" 
+      : "translate-y-[calc(100%-125px)]"} /* 65px(GNB) + 60px(핸들바) = 125px */
+  `}
+>
+  {/* 핸들바 영역: 이 부분이 GNB(65px) 바로 위에서 터치 포인트가 됩니다 */}
+  <div
+    className="w-full h-[60px] flex items-center justify-center shrink-0 cursor-pointer"
+    onClick={() => setIsMobileSheetOpen(!isMobileSheetOpen)}
+  >
+    <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+  </div>
 
-          <div className="flex-1 overflow-y-auto">
-            <StationSidebar {...sidebarProps} />
-          </div>
-        </div>
+  {/* 내부 목록: GNB에 가려지지 않도록 하단 패딩 부여 */}
+  <div className="flex-1 overflow-y-auto pb-[65px]">
+    <StationSidebar {...sidebarProps} />
+  </div>
+</div>
       </div>
     </div>
   );
