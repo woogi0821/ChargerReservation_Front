@@ -48,6 +48,7 @@ function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("adminName", name ?? "");
       localStorage.setItem("memberName", name ?? ""); // ✅ 추가
+      localStorage.setItem("loginId", data.loginId);
 
       setToastMessage(`환영합니다, ${name ?? "관리자"}님! 👋`);
 

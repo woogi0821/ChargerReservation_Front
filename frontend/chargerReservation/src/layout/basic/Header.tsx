@@ -125,6 +125,16 @@ const Header = () => {
     } catch (error) {
       console.error("Logout API 에러:", error);
     } finally {
+
+      localStorage.removeItem("memberId");
+      localStorage.removeItem("adminId");
+      localStorage.removeItem("adminRole");
+      localStorage.removeItem("adminPart");
+      localStorage.removeItem("adminName");
+      localStorage.removeItem("memberName");
+      localStorage.removeItem("loginId");
+      localStorage.removeItem("accessToken");
+
       logout();
       setToastMessage("로그아웃 되었습니다 👋");
       navigate("/");
