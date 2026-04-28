@@ -499,27 +499,26 @@ const MyPage = () => {
         isOpen={cancelModal.isOpen}
         onClose={cancelModal.close}
         title="예약 취소"
-        actions={
-          <>
-            <Button variant="outline" onClick={cancelModal.close}>닫기</Button>
-            <Button variant="danger" onClick={handleCancelConfirm}>취소 확정</Button>
-          </>
-        }
       >
-        <p className="text-slate-600 text-sm">
+        <p className="text-slate-600 text-sm mb-6">
           정말 이 예약을 취소하시겠습니까?<br />
           <span className="text-slate-400 text-xs">취소 후에는 되돌릴 수 없습니다.</span>
         </p>
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={cancelModal.close}>닫기</Button>
+          <Button variant="danger" onClick={handleCancelConfirm}>취소 확정</Button>
+        </div>
       </Modal>
 
       {/* ── 토스트 ──────────────────────────────────────────────────────── */}
-      {toast.visible && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={hideToast}
-        />
-      )}
+      <Toast
+        isVisible={toast.isVisible}
+        variant={toast.variant}
+        position={toast.position}
+        onClose={hideToast}
+      >
+        {toast.message}
+      </Toast>
     </div>
   );
 };
