@@ -34,8 +34,6 @@ const AdminManagePage = () => {
 
   const [admins, setAdmins] = useState<AdminDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // ✅ 정렬 상태 — 기본값 최신순
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,11 +46,11 @@ const AdminManagePage = () => {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminDto | null>(null);
   const [newRole, setNewRole] = useState("MANAGER");
+  const [newPart, setNewPart] = useState("MEMBER"); // ✅ 추가 — 파트 변경 상태
 
   const currentAdminId = Number(localStorage.getItem("adminId"));
   const token = localStorage.getItem("accessToken");
 
-  // ✅ SUPER 최상단 고정 + 나머지 정렬
   const sortedAdmins = [
     ...admins.filter(a => a.adminRole === "SUPER"),
     ...[...admins.filter(a => a.adminRole !== "SUPER")].sort((a, b) =>
@@ -176,31 +174,52 @@ const AdminManagePage = () => {
   const onOpenRoleModal = (admin: AdminDto) => {
     setSelectedAdmin(admin);
     setNewRole(admin.adminRole);
+    setNewPart(admin.adminPart); // ✅ 현재 파트로 초기화
     setIsRoleModalOpen(true);
   };
 
   const onUpdateRole = async () => {
     if (!selectedAdmin) return;
-    if (selectedAdmin.adminRole === newRole) {
+    // ✅ 역할이랑 파트 둘 다 변경 없으면 닫기
+    if (selectedAdmin.adminRole === newRole && selectedAdmin.adminPart === newPart) {
       setIsRoleModalOpen(false);
       return;
     }
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/admin/${selectedAdmin.adminId}/role?newRole=${newRole}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        }
-      );
-      if (!response.ok) return;
+      // ✅ 역할 변경
+      if (selectedAdmin.adminRole !== newRole) {
+        const roleRes = await fetch(
+          `http://localhost:8080/api/admin/${selectedAdmin.adminId}/role?newRole=${newRole}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+          }
+        );
+        if (!roleRes.ok) return;
+      }
+
+      // ✅ 파트 변경
+      if (selectedAdmin.adminPart !== newPart) {
+        const partRes = await fetch(
+          `http://localhost:8080/api/admin/${selectedAdmin.adminId}/part?newPart=${newPart}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+          }
+        );
+        if (!partRes.ok) return;
+      }
+
       setIsRoleModalOpen(false);
       setSelectedAdmin(null);
       fetchAdmins();
-      setToastMessage(`${selectedAdmin.name}님의 역할이 ${newRole} 으로 변경되었습니다 ✅`);
+      setToastMessage(`${selectedAdmin.name}님의 정보가 변경되었습니다 ✅`);
     } catch (error) {
       console.error("서버 연결 실패", error);
     }
@@ -218,7 +237,6 @@ const AdminManagePage = () => {
             <span className="text-xs text-gray-400">총 {admins.length}명</span>
           </div>
           <div className="flex items-center gap-2">
-            {/* ✅ 정렬 드롭다운 */}
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as "desc" | "asc")}
@@ -440,7 +458,7 @@ const AdminManagePage = () => {
         </div>
       )}
 
-      {/* 역할 변경 모달 */}
+      {/* ✅ 역할 + 파트 변경 모달 */}
       {isRoleModalOpen && selectedAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/30" onClick={() => setIsRoleModalOpen(false)} />
@@ -448,7 +466,7 @@ const AdminManagePage = () => {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-1 h-4 bg-blue-700" />
-                <h3 className="text-sm font-semibold text-gray-700">역할 변경</h3>
+                <h3 className="text-sm font-semibold text-gray-700">역할 / 파트 변경</h3>
               </div>
               <button
                 onClick={() => setIsRoleModalOpen(false)}
@@ -471,6 +489,14 @@ const AdminManagePage = () => {
                   {selectedAdmin.adminRole}
                 </span>
               </div>
+              <div className="flex items-center border-b border-gray-50 pb-3">
+                <span className="w-20 text-xs text-gray-400">현재 파트</span>
+                <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${(partConfig[selectedAdmin.adminPart] ?? { color: "bg-gray-50 text-gray-500" }).color}`}>
+                  {(partConfig[selectedAdmin.adminPart] ?? { label: selectedAdmin.adminPart }).label}
+                </span>
+              </div>
+
+              {/* ✅ 역할 변경 */}
               <div>
                 <label className="block text-xs text-gray-400 tracking-wide mb-2">변경할 역할</label>
                 <div className="flex gap-3">
@@ -496,14 +522,31 @@ const AdminManagePage = () => {
                   </button>
                 </div>
               </div>
+
+              {/* ✅ 파트 변경 */}
+              <div>
+                <label className="block text-xs text-gray-400 tracking-wide mb-2">변경할 파트</label>
+                <select
+                  value={newPart}
+                  onChange={(e) => setNewPart(e.target.value)}
+                  className="w-full border-b border-gray-300 focus:border-blue-700 outline-none py-2 text-sm text-gray-700"
+                >
+                  <option value="ALL">ALL (전체)</option>
+                  <option value="MEMBER">MEMBER (회원)</option>
+                  <option value="RESERVATION">RESERVATION (예약)</option>
+                  <option value="CHARGER">CHARGER (충전기)</option>
+                  <option value="PENALTY">PENALTY (패널티)</option>
+                  <option value="INQUIRY">INQUIRY (문의)</option>
+                </select>
+              </div>
             </div>
 
             <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
               <button
                 onClick={onUpdateRole}
-                disabled={selectedAdmin.adminRole === newRole}
+                disabled={selectedAdmin.adminRole === newRole && selectedAdmin.adminPart === newPart}
                 className={`flex-1 py-2 text-sm rounded-lg transition-colors
-                  ${selectedAdmin.adminRole !== newRole
+                  ${(selectedAdmin.adminRole !== newRole || selectedAdmin.adminPart !== newPart)
                     ? "text-white bg-blue-700 hover:bg-blue-800"
                     : "text-gray-300 bg-gray-100 cursor-not-allowed"
                   }`}
